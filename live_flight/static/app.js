@@ -22,10 +22,11 @@ function planeIcon(heading) {
 function initMap(coords) {
   const center = L.latLng(coords.lat, coords.lon);
   map = L.map("map").fitBounds(center.toBounds(MAP_RADIUS_METERS * 2));
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
     maxZoom: 19,
+    subdomains: "abcd",
     attribution:
-      '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>',
   }).addTo(map);
   L.control.scale({ imperial: false, metric: true, maxWidth: 150 }).addTo(map);
   userMarker = L.marker(center).addTo(map).bindPopup("You are here");

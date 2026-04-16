@@ -14,36 +14,38 @@
   </head>
   <body>
     <main>
-      <header>
-        <h1>Live Flight</h1>
-        <p id="location-info" class="muted">Detecting your location…</p>
-      </header>
+      <aside class="panel-left">
+        <header>
+          <h1>Live Flight</h1>
+          <p id="location-info" class="muted">Detecting your location…</p>
+        </header>
 
-      <section id="map-section">
+        <section id="flight-section">
+          <p id="flight-status">Waiting for location…</p>
+
+          <div id="flight-card" class="card hidden">
+            <img id="f-photo" class="photo hidden" alt="Aircraft photo" />
+            <p id="f-photo-credit" class="muted photo-credit hidden"></p>
+            <div class="row"><span class="label">Callsign</span><span id="f-callsign" class="value"></span></div>
+            <div class="row"><span class="label">Airline</span><span id="f-airline" class="value"></span></div>
+            <div class="row"><span class="label">Aircraft</span><span id="f-aircraft" class="value"></span></div>
+            <div class="row"><span class="label">Origin</span><span id="f-origin" class="value"></span></div>
+            <div class="row"><span class="label">Destination</span><span id="f-destination" class="value"></span></div>
+            <div class="row"><span class="label">Speed</span><span id="f-speed" class="value"></span></div>
+            <div class="row"><span class="label">Distance</span><span id="f-distance" class="value"></span></div>
+          </div>
+
+          <p id="last-updated" class="muted"></p>
+        </section>
+
+        <footer>
+          <p class="muted">Auto-refreshes every 20 seconds.</p>
+        </footer>
+      </aside>
+
+      <section class="panel-right">
         <div id="map"></div>
       </section>
-
-      <section id="flight-section">
-        <p id="flight-status">Waiting for location…</p>
-
-        <div id="flight-card" class="card hidden">
-          <img id="f-photo" class="photo hidden" alt="Aircraft photo" />
-          <p id="f-photo-credit" class="muted photo-credit hidden"></p>
-          <div class="row"><span class="label">Callsign</span><span id="f-callsign" class="value"></span></div>
-          <div class="row"><span class="label">Airline</span><span id="f-airline" class="value"></span></div>
-          <div class="row"><span class="label">Aircraft</span><span id="f-aircraft" class="value"></span></div>
-          <div class="row"><span class="label">Origin</span><span id="f-origin" class="value"></span></div>
-          <div class="row"><span class="label">Destination</span><span id="f-destination" class="value"></span></div>
-          <div class="row"><span class="label">Speed</span><span id="f-speed" class="value"></span></div>
-          <div class="row"><span class="label">Distance</span><span id="f-distance" class="value"></span></div>
-        </div>
-
-        <p id="last-updated" class="muted"></p>
-      </section>
-
-      <footer>
-        <p class="muted">Auto-refreshes every 20 seconds.</p>
-      </footer>
     </main>
 
     <script

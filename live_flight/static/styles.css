@@ -17,14 +17,31 @@ body {
   background: var(--bg);
   color: var(--text);
   min-height: 100vh;
-  display: flex;
-  justify-content: center;
-  padding: 2rem 1rem;
 }
 
 main {
-  width: 100%;
-  max-width: 640px;
+  display: grid;
+  grid-template-columns: minmax(340px, 420px) 1fr;
+  height: 100vh;
+  width: 100vw;
+}
+
+.panel-left {
+  padding: 2rem 1.75rem;
+  overflow-y: auto;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+}
+
+.panel-left footer {
+  margin-top: auto;
+}
+
+.panel-right {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
 }
 
 header h1 {
@@ -38,15 +55,9 @@ header h1 {
   font-size: 0.9rem;
 }
 
-#map-section {
-  margin-top: 1.5rem;
-}
-
 #map {
-  height: 360px;
+  height: 100%;
   width: 100%;
-  border-radius: 0.75rem;
-  border: 1px solid var(--border);
   background: var(--surface);
 }
 
@@ -128,4 +139,20 @@ footer {
 
 a {
   color: var(--accent);
+}
+
+@media (max-width: 768px) {
+  main {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+
+  .panel-left {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .panel-right {
+    height: 60vh;
+  }
 }
