@@ -2,11 +2,14 @@ import math
 import time
 from dataclasses import dataclass
 
+import requests
 from opensky_api import OpenSkyApi, StateVector
 
 EARTH_RADIUS_KM = 6371.0
 SEARCH_RADIUS_DEG = 3.0
 FLIGHT_HISTORY_WINDOW_HOURS = 24
+AIRCRAFT_DB_URL = "https://hexdb.io/api/v1/aircraft"
+AIRCRAFT_DB_TIMEOUT = 5.0
 
 
 @dataclass
@@ -15,6 +18,7 @@ class ClosestFlight:
     origin_country: str
     departure_airport: str
     arrival_airport: str
+    aircraft_type: str
     speed_kmh: float
     distance_km: float
 
@@ -42,6 +46,18 @@ def _nearest_state(states: list[StateVector], lat: float, lon: float) -> tuple[S
     return min(candidates, key=lambda item: item[1])
 
 
+def _lookup_aircraft_type(icao24: str) -> str:
+    try:
+        response = requests.get(f"{AIRCRAFT_DB_URL}/{icao24}", timeout=AIRCRAFT_DB_TIMEOUT)
+        response.raise_for_status()
+        data = response.json()
+    except Exception:
+        return "N/A"
+    manufacturer = (data.get("Manufacturer") or "").strip()
+    model = (data.get("Type") or "").strip()
+    return f"{manufacturer} {model}".strip() or "N/A"
+
+
 def _lookup_route(api: OpenSkyApi, icao24: str) -> tuple[str, str]:
     now = int(time.time())
     begin = now - FLIGHT_HISTORY_WINDOW_HOURS * 3600
@@ -67,6 +83,7 @@ def find_closest_flight(api: OpenSkyApi, lat: float, lon: float) -> ClosestFligh
 
     state, distance = nearest
     departure, arrival = _lookup_route(api, state.icao24)
+    aircraft_type = _lookup_aircraft_type(state.icao24)
     speed_kmh = (state.velocity or 0.0) * 3.6
 
     return ClosestFlight(
@@ -74,6 +91,7 @@ def find_closest_flight(api: OpenSkyApi, lat: float, lon: float) -> ClosestFligh
         origin_country=state.origin_country or "N/A",
         departure_airport=departure,
         arrival_airport=arrival,
+        aircraft_type=aircraft_type,
         speed_kmh=speed_kmh,
         distance_km=distance,
     )

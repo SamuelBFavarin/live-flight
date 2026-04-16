@@ -1,11 +1,12 @@
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from live_flight.opensky import (
     ClosestFlight,
     _bounding_box,
+    _lookup_aircraft_type,
     _lookup_route,
     _nearest_state,
     find_closest_flight,
@@ -115,6 +116,44 @@ class TestLookupRoute:
         assert end - begin == 24 * 3600
 
 
+class TestLookupAircraftType:
+    @patch("live_flight.opensky.requests.get")
+    def test_combines_manufacturer_and_type(self, mock_get):
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"Manufacturer": "Boeing", "Type": "737-86Q"}
+        mock_get.return_value = mock_response
+        assert _lookup_aircraft_type("abc123") == "Boeing 737-86Q"
+
+    @patch("live_flight.opensky.requests.get")
+    def test_missing_fields_fall_back_to_na(self, mock_get):
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"Manufacturer": None, "Type": None}
+        mock_get.return_value = mock_response
+        assert _lookup_aircraft_type("abc123") == "N/A"
+
+    @patch("live_flight.opensky.requests.get")
+    def test_only_type_present(self, mock_get):
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"Manufacturer": "", "Type": "A320"}
+        mock_get.return_value = mock_response
+        assert _lookup_aircraft_type("abc123") == "A320"
+
+    @patch("live_flight.opensky.requests.get")
+    def test_http_error_returns_na(self, mock_get):
+        mock_get.side_effect = RuntimeError("network down")
+        assert _lookup_aircraft_type("abc123") == "N/A"
+
+    @patch("live_flight.opensky.requests.get")
+    def test_queries_hexdb_endpoint(self, mock_get):
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"Manufacturer": "Airbus", "Type": "A320"}
+        mock_get.return_value = mock_response
+        _lookup_aircraft_type("abc123")
+        (url,), _ = mock_get.call_args
+        assert url.endswith("/abc123")
+        assert "hexdb.io" in url
+
+
 class TestFindClosestFlight:
     def test_no_response_returns_none(self):
         api = MagicMock()
@@ -126,7 +165,9 @@ class TestFindClosestFlight:
         api.get_states.return_value = SimpleNamespace(states=[])
         assert find_closest_flight(api, 0.0, 0.0) is None
 
-    def test_builds_closest_flight_with_route(self):
+    @patch("live_flight.opensky._lookup_aircraft_type")
+    def test_builds_closest_flight_with_route(self, mock_aircraft):
+        mock_aircraft.return_value = "Boeing 737-8"
         api = MagicMock()
         near = _state(
             icao24="near01",
@@ -149,10 +190,14 @@ class TestFindClosestFlight:
         assert result.origin_country == "Brazil"
         assert result.departure_airport == "SBGR"
         assert result.arrival_airport == "SBSP"
+        assert result.aircraft_type == "Boeing 737-8"
         assert result.speed_kmh == pytest.approx(250.0 * 3.6)
         assert result.distance_km == pytest.approx(haversine_km(0.0, 0.0, 0.1, 0.1))
+        mock_aircraft.assert_called_once_with("near01")
 
-    def test_handles_missing_callsign_and_velocity(self):
+    @patch("live_flight.opensky._lookup_aircraft_type")
+    def test_handles_missing_callsign_and_velocity(self, mock_aircraft):
+        mock_aircraft.return_value = "N/A"
         api = MagicMock()
         api.get_states.return_value = SimpleNamespace(states=[
             _state(callsign=None, velocity=None, latitude=0.1, longitude=0.1),
@@ -166,6 +211,7 @@ class TestFindClosestFlight:
         assert result.speed_kmh == 0.0
         assert result.departure_airport == "N/A"
         assert result.arrival_airport == "N/A"
+        assert result.aircraft_type == "N/A"
 
     def test_uses_bounding_box_around_location(self):
         api = MagicMock()

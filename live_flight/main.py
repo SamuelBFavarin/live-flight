@@ -35,6 +35,7 @@ def _print_flight(lat: float, lon: float, api: OpenSkyApi) -> None:
 
     print(
         f"[{timestamp}] closest flight: {flight.callsign} | "
+        f"aircraft: {flight.aircraft_type} | "
         f"origin: {flight.departure_airport} ({flight.origin_country}) | "
         f"destination: {flight.arrival_airport} | "
         f"speed: {flight.speed_kmh:.1f} km/h | "
