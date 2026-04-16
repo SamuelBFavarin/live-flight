@@ -56,6 +56,47 @@ function formatAirport(airport) {
   return `${airport.icao} — ${airport.name} (${airport.city}, ${airport.country})`;
 }
 
+function hidePhoto() {
+  el("f-photo").classList.add("hidden");
+  el("f-photo-credit").classList.add("hidden");
+}
+
+function showPhoto(photo) {
+  const img = el("f-photo");
+  const credit = el("f-photo-credit");
+
+  img.src = photo.thumbnail_url;
+  img.classList.remove("hidden");
+
+  credit.replaceChildren();
+  credit.append("Photo © ");
+  if (photo.link) {
+    const anchor = document.createElement("a");
+    anchor.href = photo.link;
+    anchor.target = "_blank";
+    anchor.rel = "noopener";
+    anchor.textContent = photo.photographer;
+    credit.appendChild(anchor);
+  } else {
+    credit.append(photo.photographer);
+  }
+  credit.append(" / planespotters.net");
+  credit.classList.remove("hidden");
+}
+
+async function loadAircraftPhoto(icao24) {
+  hidePhoto();
+  if (!icao24) return;
+  try {
+    const response = await fetch(`/aircraft-photo?icao24=${icao24}`);
+    if (!response.ok) return;
+    const { photo } = await response.json();
+    if (photo) showPhoto(photo);
+  } catch (err) {
+    console.warn(`photo lookup failed: ${err.message}`);
+  }
+}
+
 function renderFlight(flight) {
   const card = el("flight-card");
   const status = el("flight-status");
@@ -75,6 +116,7 @@ function renderFlight(flight) {
   el("f-destination").textContent = formatAirport(flight.arrival);
   el("f-speed").textContent = `${flight.speed_kmh.toFixed(1)} km/h`;
   el("f-distance").textContent = `${flight.distance_km.toFixed(1)} km`;
+  loadAircraftPhoto(flight.icao24);
 }
 
 function setError(message) {

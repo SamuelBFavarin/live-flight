@@ -12,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from opensky_api import OpenSkyApi
 
 from live_flight.opensky import find_closest_flight
+from live_flight.photos import fetch_aircraft_photo
 
 logger = logging.getLogger(__name__)
 STATIC_DIR = Path(__file__).parent / "static"
@@ -67,3 +68,19 @@ def get_closest_flight(
         logger.exception("failed to fetch closest flight")
         raise HTTPException(status_code=500, detail=f"Upstream error: {exc}")
     return {"flight": asdict(flight) if flight is not None else None}
+
+
+@app.get("/aircraft-photo", summary="Photo of an aircraft by ICAO24 address")
+def get_aircraft_photo(
+    icao24: str = Query(
+        ...,
+        pattern=r"^[a-fA-F0-9]{6}$",
+        description="6-character hex ICAO24 transponder address.",
+    ),
+) -> dict[str, Any]:
+    try:
+        photo = fetch_aircraft_photo(icao24.lower())
+    except Exception as exc:
+        logger.exception("failed to fetch aircraft photo")
+        raise HTTPException(status_code=500, detail=f"Photo lookup failed: {exc}")
+    return {"photo": asdict(photo) if photo is not None else None}

@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 
 from live_flight.api import app
 from live_flight.opensky import Airport, ClosestFlight
+from live_flight.photos import AircraftPhoto
 
 client = TestClient(app)
 
@@ -12,6 +13,7 @@ client = TestClient(app)
 def _sample_flight() -> ClosestFlight:
     return ClosestFlight(
         callsign="GOL1234",
+        icao24="e48e38",
         origin_country="Brazil",
         departure=Airport(icao="SBGR", name="Guarulhos Intl", city="Sao Paulo", country="BR"),
         arrival=Airport(icao="SBSP", name="Congonhas", city="Sao Paulo", country="BR"),
@@ -111,3 +113,54 @@ class TestClosestFlightEndpoint:
 
         assert response.status_code == 500
         assert "opensky is down" in response.json()["detail"]
+
+
+class TestAircraftPhotoEndpoint:
+    @patch("live_flight.api.fetch_aircraft_photo")
+    def test_200_returns_serialized_photo(self, mock_fetch):
+        mock_fetch.return_value = AircraftPhoto(
+            thumbnail_url="https://example.com/large.jpg",
+            photographer="Jane Doe",
+            link="https://www.planespotters.net/photo/1/x",
+        )
+
+        response = client.get("/aircraft-photo", params={"icao24": "4B1805"})
+
+        assert response.status_code == 200
+        assert response.json() == {
+            "photo": {
+                "thumbnail_url": "https://example.com/large.jpg",
+                "photographer": "Jane Doe",
+                "link": "https://www.planespotters.net/photo/1/x",
+            }
+        }
+        mock_fetch.assert_called_once_with("4b1805")
+
+    @patch("live_flight.api.fetch_aircraft_photo")
+    def test_200_with_null_when_photo_not_found(self, mock_fetch):
+        mock_fetch.return_value = None
+        response = client.get("/aircraft-photo", params={"icao24": "abcdef"})
+        assert response.status_code == 200
+        assert response.json() == {"photo": None}
+
+    @pytest.mark.parametrize(
+        "params",
+        [
+            {},
+            {"icao24": ""},
+            {"icao24": "xyz"},
+            {"icao24": "12345"},
+            {"icao24": "12345g"},
+            {"icao24": "1234567"},
+        ],
+    )
+    def test_400_on_invalid_icao24(self, params):
+        response = client.get("/aircraft-photo", params=params)
+        assert response.status_code == 400
+
+    @patch("live_flight.api.fetch_aircraft_photo")
+    def test_500_on_upstream_error(self, mock_fetch):
+        mock_fetch.side_effect = RuntimeError("planespotters is down")
+        response = client.get("/aircraft-photo", params={"icao24": "abcdef"})
+        assert response.status_code == 500
+        assert "planespotters is down" in response.json()["detail"]

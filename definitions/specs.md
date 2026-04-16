@@ -18,6 +18,10 @@ Goal: Expose an HTTP API that, given a caller-supplied location (latitude / long
   - `200` — success. When no aircraft is within the search area, return `{"flight": null}` (still 200).
   - `400` — `lat` or `lon` is missing, not numeric, or out of range (`lat ∉ [-90, 90]` or `lon ∉ [-180, 180]`).
   - `500` — upstream error (OpenSky unreachable, unhandled exception in enrichment, …).
+- `GET /aircraft-photo?icao24=<hex>` — returns a photo of the aircraft with the given ICAO24 address, sourced from a public aircraft photo registry (e.g. `planespotters.net`). The response must to include a thumbnail URL, the photographer's name and a link back to the photo page so callers can comply with the registry's attribution requirements.
+  - `200` — success. When the registry has no photo for this aircraft, return `{"photo": null}` (still 200).
+  - `400` — `icao24` is missing or is not a valid 6-character hex string.
+  - `500` — upstream error.
 - `GET /` — serves the web UI's entry HTML document.
 - `GET /static/*` — serves the web UI's static assets (CSS, JS).
 
@@ -27,6 +31,7 @@ Goal: Expose an HTTP API that, given a caller-supplied location (latitude / long
 - The API must to ship a minimal web UI reachable at `/`, implemented with plain HTML, CSS and JavaScript (no build step, no framework).
 - On load, the UI must to detect the visitor's location using the browser's native Geolocation API (`navigator.geolocation.getCurrentPosition`). If the user denies the permission or the browser does not support geolocation, the UI must to fall back silently to an IP-based lookup via a public client-side service (e.g. `ipapi.co`). The backend must not be involved in the location lookup in either case.
 - Using those coordinates, the UI must to call the `/closest-flight` endpoint and render the response (callsign, airline, aircraft model, origin, destination, speed, distance).
+- For each rendered flight, the UI must to call `/aircraft-photo?icao24=<hex>` and, when a photo is returned, display it alongside the flight details together with the photographer's name linking back to the photo page (per the photo registry's attribution requirement).
 - The UI must to auto-refresh the flight information every 20 seconds; the IP-based location is only fetched once, at page load.
 - Errors from either the geolocation service or the API must to be surfaced to the user.
 
