@@ -36,6 +36,7 @@ def test_print_flight_renders_closest_flight(mock_find, capsys):
         departure_airport="SBGR",
         arrival_airport="SBSP",
         aircraft_type="Boeing 737-8",
+        airline="Gol Linhas Aereas",
         speed_kmh=900.0,
         distance_km=12.5,
     )
@@ -45,6 +46,7 @@ def test_print_flight_renders_closest_flight(mock_find, capsys):
     out = capsys.readouterr().out
     assert "GOL1234" in out
     assert "Boeing 737-8" in out
+    assert "Gol Linhas Aereas" in out
     assert "SBGR" in out
     assert "SBSP" in out
     assert "Brazil" in out

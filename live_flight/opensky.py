@@ -19,6 +19,7 @@ class ClosestFlight:
     departure_airport: str
     arrival_airport: str
     aircraft_type: str
+    airline: str
     speed_kmh: float
     distance_km: float
 
@@ -46,16 +47,18 @@ def _nearest_state(states: list[StateVector], lat: float, lon: float) -> tuple[S
     return min(candidates, key=lambda item: item[1])
 
 
-def _lookup_aircraft_type(icao24: str) -> str:
+def _lookup_aircraft_info(icao24: str) -> tuple[str, str]:
     try:
         response = requests.get(f"{AIRCRAFT_DB_URL}/{icao24}", timeout=AIRCRAFT_DB_TIMEOUT)
         response.raise_for_status()
         data = response.json()
     except Exception:
-        return "N/A"
+        return ("N/A", "N/A")
     manufacturer = (data.get("Manufacturer") or "").strip()
     model = (data.get("Type") or "").strip()
-    return f"{manufacturer} {model}".strip() or "N/A"
+    airline = (data.get("RegisteredOwners") or "").strip()
+    aircraft_type = f"{manufacturer} {model}".strip() or "N/A"
+    return (aircraft_type, airline or "N/A")
 
 
 def _lookup_route(api: OpenSkyApi, icao24: str) -> tuple[str, str]:
@@ -83,7 +86,7 @@ def find_closest_flight(api: OpenSkyApi, lat: float, lon: float) -> ClosestFligh
 
     state, distance = nearest
     departure, arrival = _lookup_route(api, state.icao24)
-    aircraft_type = _lookup_aircraft_type(state.icao24)
+    aircraft_type, airline = _lookup_aircraft_info(state.icao24)
     speed_kmh = (state.velocity or 0.0) * 3.6
 
     return ClosestFlight(
@@ -92,6 +95,7 @@ def find_closest_flight(api: OpenSkyApi, lat: float, lon: float) -> ClosestFligh
         departure_airport=departure,
         arrival_airport=arrival,
         aircraft_type=aircraft_type,
+        airline=airline,
         speed_kmh=speed_kmh,
         distance_km=distance,
     )
