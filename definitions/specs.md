@@ -25,7 +25,7 @@ Goal: Expose an HTTP API that, given a caller-supplied location (latitude / long
 ### Web UI
 
 - The API must to ship a minimal web UI reachable at `/`, implemented with plain HTML, CSS and JavaScript (no build step, no framework).
-- On load, the UI must to detect the visitor's approximate location from their IP using a public client-side geolocation service (e.g. `ipapi.co`). The backend must not be involved in the location lookup.
+- On load, the UI must to detect the visitor's location using the browser's native Geolocation API (`navigator.geolocation.getCurrentPosition`). If the user denies the permission or the browser does not support geolocation, the UI must to fall back silently to an IP-based lookup via a public client-side service (e.g. `ipapi.co`). The backend must not be involved in the location lookup in either case.
 - Using those coordinates, the UI must to call the `/closest-flight` endpoint and render the response (callsign, airline, aircraft model, origin, destination, speed, distance).
 - The UI must to auto-refresh the flight information every 20 seconds; the IP-based location is only fetched once, at page load.
 - Errors from either the geolocation service or the API must to be surfaced to the user.

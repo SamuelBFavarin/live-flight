@@ -89,10 +89,13 @@ Status codes:
 
 A minimal vanilla HTML/CSS/JS page is shipped with the app (under [live_flight/static/](live_flight/static/)):
 
-1. On load it calls [ipapi.co](https://ipapi.co/) from the browser to get the visitor's approximate latitude/longitude based on their IP.
-2. It then polls the API's `/closest-flight` endpoint every 20 seconds with those coordinates and renders the response.
+1. On load it asks the browser for the visitor's location via the standard [Geolocation API](https://developer.mozilla.org/en-US/docs/Web/API/Geolocation_API) (`navigator.geolocation.getCurrentPosition`). The browser prompts the user the first time.
+2. If the user declines or the browser doesn't support geolocation, it silently falls back to an IP-based lookup via [ipapi.co](https://ipapi.co/).
+3. It then polls the API's `/closest-flight` endpoint every 20 seconds with those coordinates and renders the response.
 
 No build step, bundler, or framework is required — FastAPI mounts the files at `/static/*` and serves `index.html` at `/`.
+
+> Note: `navigator.geolocation` is only available on secure origins (HTTPS) in production. On `localhost` it works over HTTP for dev.
 
 ## Running the tests
 

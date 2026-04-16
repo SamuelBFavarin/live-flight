@@ -2,7 +2,26 @@ const REFRESH_MS = 20_000;
 
 const el = (id) => document.getElementById(id);
 
-async function detectLocation() {
+function detectBrowserLocation() {
+  if (!navigator.geolocation) {
+    return Promise.reject(new Error("Browser geolocation not supported"));
+  }
+  return new Promise((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(
+      (position) =>
+        resolve({
+          lat: position.coords.latitude,
+          lon: position.coords.longitude,
+          city: "",
+          country: "",
+        }),
+      (err) => reject(new Error(err.message || "Geolocation permission denied")),
+      { timeout: 10_000, maximumAge: 0 },
+    );
+  });
+}
+
+async function detectIpLocation() {
   const response = await fetch("https://ipapi.co/json/");
   if (!response.ok) throw new Error(`IP geolocation failed (${response.status})`);
   const data = await response.json();
@@ -15,6 +34,15 @@ async function detectLocation() {
     city: data.city || "",
     country: data.country_name || "",
   };
+}
+
+async function detectLocation() {
+  try {
+    return await detectBrowserLocation();
+  } catch (err) {
+    console.warn(`Browser geolocation failed: ${err.message}. Falling back to IP lookup.`);
+    return await detectIpLocation();
+  }
 }
 
 async function fetchClosestFlight(lat, lon) {
@@ -74,8 +102,8 @@ async function main() {
     return;
   }
 
-  const label = coords.city && coords.country ? `${coords.city}, ${coords.country}` : "unknown place";
-  el("location-info").textContent = `Your location: ${label} (${coords.lat.toFixed(4)}, ${coords.lon.toFixed(4)})`;
+  const label = coords.city && coords.country ? `${coords.city}, ${coords.country} ` : "";
+  el("location-info").textContent = `Your location: ${label}(${coords.lat.toFixed(4)}, ${coords.lon.toFixed(4)})`;
 
   await refresh();
   setInterval(refresh, REFRESH_MS);
