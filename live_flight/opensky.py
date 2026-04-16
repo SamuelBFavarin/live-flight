@@ -32,6 +32,7 @@ class ClosestFlight:
     origin_country: str
     latitude: float
     longitude: float
+    true_track: float | None
     departure: Airport
     arrival: Airport
     aircraft_type: str
@@ -128,6 +129,7 @@ def find_closest_flight(api: OpenSkyApi, lat: float, lon: float) -> ClosestFligh
         origin_country=state.origin_country or "N/A",
         latitude=state.latitude,
         longitude=state.longitude,
+        true_track=state.true_track,
         departure=_lookup_airport(departure_icao),
         arrival=_lookup_airport(arrival_icao),
         aircraft_type=aircraft_type,

@@ -51,10 +51,16 @@ header h1 {
 }
 
 .plane-icon {
-  font-size: 20px;
-  line-height: 20px;
-  text-align: center;
-  text-shadow: 0 0 2px rgba(0, 0, 0, 0.7);
+  background: transparent;
+  border: 0;
+}
+
+.plane-marker {
+  width: 28px;
+  height: 28px;
+  transform-origin: center center;
+  will-change: transform;
+  filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.6));
 }
 
 #flight-section {

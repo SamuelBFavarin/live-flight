@@ -7,13 +7,17 @@ let map = null;
 let userMarker = null;
 let flightMarker = null;
 
-const PLANE_ICON = () =>
-  L.divIcon({
-    html: "✈️",
+const PLANE_SVG = `<svg viewBox="0 0 24 24" width="28" height="28" xmlns="http://www.w3.org/2000/svg"><path d="M21,16v-2l-8-5V3.5C13,2.67 12.33,2 11.5,2C10.67,2 10,2.67 10,3.5V9l-8,5v2l8-2.5V19l-2,1.5V22l3.5-1l3.5,1v-1.5L13,19v-5.5L21,16z" fill="#f8fafc" stroke="#0f172a" stroke-width="0.5" stroke-linejoin="round"/></svg>`;
+
+function planeIcon(heading) {
+  const rotation = Number.isFinite(heading) ? heading : 0;
+  return L.divIcon({
+    html: `<div class="plane-marker" style="transform: rotate(${rotation}deg)">${PLANE_SVG}</div>`,
     className: "plane-icon",
-    iconSize: [24, 24],
-    iconAnchor: [12, 12],
+    iconSize: [28, 28],
+    iconAnchor: [14, 14],
   });
+}
 
 function initMap(coords) {
   const center = L.latLng(coords.lat, coords.lon);
@@ -37,10 +41,12 @@ function updateFlightMarker(flight) {
     return;
   }
   const position = [flight.latitude, flight.longitude];
+  const icon = planeIcon(flight.true_track);
   if (!flightMarker) {
-    flightMarker = L.marker(position, { icon: PLANE_ICON() }).addTo(map);
+    flightMarker = L.marker(position, { icon }).addTo(map);
   } else {
     flightMarker.setLatLng(position);
+    flightMarker.setIcon(icon);
   }
   flightMarker.bindPopup(`${flight.callsign} — ${flight.airline}`);
 }

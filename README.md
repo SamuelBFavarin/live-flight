@@ -60,6 +60,7 @@ Example response:
     "origin_country": "Brazil",
     "latitude": -23.512,
     "longitude": -46.623,
+    "true_track": 225.4,
     "departure": {
       "icao": "SBGR",
       "name": "Guarulhos International Airport",
@@ -126,7 +127,7 @@ A minimal vanilla HTML/CSS/JS page is shipped with the app (under [live_flight/s
 2. If the user declines or the browser doesn't support geolocation, it silently falls back to an IP-based lookup via [ipapi.co](https://ipapi.co/).
 3. It then polls the API's `/closest-flight` endpoint every 20 seconds with those coordinates and renders the response.
 4. For each flight, it also calls `/aircraft-photo?icao24=<hex>` to fetch a photo from planespotters.net and renders it at the top of the card with the required photographer credit.
-5. An interactive [Leaflet](https://leafletjs.com/) map (tiles from [OpenStreetMap](https://www.openstreetmap.org/)) shows your location and the aircraft's current position with a plane icon. The initial viewport is scaled to ~100 km, and a scale bar is rendered in the corner.
+5. An interactive [Leaflet](https://leafletjs.com/) map (tiles from [OpenStreetMap](https://www.openstreetmap.org/)) shows your location and the aircraft's current position with a plane icon. The icon is rotated to match the aircraft's current heading (`true_track`, degrees clockwise from north) so it visually points in the direction of travel. The initial viewport is scaled to ~100 km, and a scale bar is rendered in the corner.
 
 No build step, bundler, or framework is required — FastAPI mounts the files at `/static/*` and serves `index.html` at `/`.
 

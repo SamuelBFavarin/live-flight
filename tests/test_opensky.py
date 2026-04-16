@@ -24,6 +24,7 @@ def _state(**kwargs) -> SimpleNamespace:
         latitude=0.0,
         longitude=0.0,
         velocity=100.0,
+        true_track=90.0,
     )
     defaults.update(kwargs)
     return SimpleNamespace(**defaults)
@@ -246,6 +247,7 @@ class TestFindClosestFlight:
             latitude=0.1,
             longitude=0.1,
             velocity=250.0,
+            true_track=135.0,
         )
         far = _state(icao24="far01", latitude=5.0, longitude=5.0)
         api.get_states.return_value = SimpleNamespace(states=[far, near])
@@ -260,6 +262,7 @@ class TestFindClosestFlight:
         assert result.origin_country == "Brazil"
         assert result.latitude == pytest.approx(0.1)
         assert result.longitude == pytest.approx(0.1)
+        assert result.true_track == pytest.approx(135.0)
         assert result.departure == Airport(icao="SBGR", name="SBGR Name", city="Sao Paulo", country="BR")
         assert result.arrival == Airport(icao="SBSP", name="SBSP Name", city="Sao Paulo", country="BR")
         assert result.aircraft_type == "Boeing 737-8"
@@ -276,7 +279,7 @@ class TestFindClosestFlight:
         mock_airport.return_value = Airport.unknown()
         api = MagicMock()
         api.get_states.return_value = SimpleNamespace(states=[
-            _state(callsign=None, velocity=None, latitude=0.1, longitude=0.1),
+            _state(callsign=None, velocity=None, latitude=0.1, longitude=0.1, true_track=None),
         ])
         api.get_flights_by_aircraft.return_value = []
 
@@ -289,6 +292,7 @@ class TestFindClosestFlight:
         assert result.arrival == Airport.unknown()
         assert result.aircraft_type == "N/A"
         assert result.airline == "N/A"
+        assert result.true_track is None
 
     def test_uses_bounding_box_around_location(self):
         api = MagicMock()
