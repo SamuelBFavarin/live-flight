@@ -32,6 +32,7 @@ Goal: Expose an HTTP API that, given a caller-supplied location (latitude / long
 - On load, the UI must to detect the visitor's location using the browser's native Geolocation API (`navigator.geolocation.getCurrentPosition`). If the user denies the permission or the browser does not support geolocation, the UI must to fall back silently to an IP-based lookup via a public client-side service (e.g. `ipapi.co`). The backend must not be involved in the location lookup in either case.
 - Using those coordinates, the UI must to call the `/closest-flight` endpoint and render the response (callsign, airline, aircraft model, origin, destination, speed, distance).
 - For each rendered flight, the UI must to call `/aircraft-photo?icao24=<hex>` and, when a photo is returned, display it alongside the flight details together with the photographer's name linking back to the photo page (per the photo registry's attribution requirement).
+- The UI must to include an interactive map built on an open-source stack (e.g. `Leaflet` + `OpenStreetMap` tiles — no proprietary map provider). The map must to show a marker at the visitor's location and a distinct airplane-shaped marker at the aircraft's current latitude/longitude. The initial viewport must to be scaled so that roughly 100 km around the visitor is visible, and the map must to render a distance scale control (in kilometers). The aircraft marker must to move on every refresh when a flight is present, and be removed when no flight is returned.
 - The UI must to auto-refresh the flight information every 20 seconds; the IP-based location is only fetched once, at page load.
 - Errors from either the geolocation service or the API must to be surfaced to the user.
 
@@ -40,7 +41,7 @@ Goal: Expose an HTTP API that, given a caller-supplied location (latitude / long
 
 - The system must to authenticate to the OpenSky API using the OAuth2 client credentials (client id + client secret) defined in the environment variables
 - The `/closest-flight` endpoint must to accept latitude and longitude from the caller; it does not detect the location server-side (the eventual web UI will use the browser geolocation API and forward the coordinates)
-- The response must to at least include: flight identification, airline, aircraft model, origin, destination and speed
+- The response must to at least include: flight identification, airline, aircraft model, origin, destination, current speed, and the aircraft's current latitude and longitude (so the client can plot it on a map)
 - The aircraft model and operating airline must to be derived from the aircraft's ICAO24 address using a public aircraft registry (e.g. `hexdb.io`); when the registry does not return a match, show `N/A`
 - Origin and destination must to include the airport ICAO code, airport name, city/region and country code; these details must to be resolved from a public airport registry (e.g. `hexdb.io`). When the registry does not return a match, show `N/A` for the missing fields
 

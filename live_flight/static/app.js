@@ -1,6 +1,49 @@
 const REFRESH_MS = 20_000;
+const MAP_RADIUS_METERS = 50_000; // 50 km radius -> ~100 km viewport
 
 const el = (id) => document.getElementById(id);
+
+let map = null;
+let userMarker = null;
+let flightMarker = null;
+
+const PLANE_ICON = () =>
+  L.divIcon({
+    html: "✈️",
+    className: "plane-icon",
+    iconSize: [24, 24],
+    iconAnchor: [12, 12],
+  });
+
+function initMap(coords) {
+  const center = L.latLng(coords.lat, coords.lon);
+  map = L.map("map").fitBounds(center.toBounds(MAP_RADIUS_METERS * 2));
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    attribution:
+      '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  }).addTo(map);
+  L.control.scale({ imperial: false, metric: true, maxWidth: 150 }).addTo(map);
+  userMarker = L.marker(center).addTo(map).bindPopup("You are here");
+}
+
+function updateFlightMarker(flight) {
+  if (!map) return;
+  if (!flight || flight.latitude == null || flight.longitude == null) {
+    if (flightMarker) {
+      flightMarker.remove();
+      flightMarker = null;
+    }
+    return;
+  }
+  const position = [flight.latitude, flight.longitude];
+  if (!flightMarker) {
+    flightMarker = L.marker(position, { icon: PLANE_ICON() }).addTo(map);
+  } else {
+    flightMarker.setLatLng(position);
+  }
+  flightMarker.bindPopup(`${flight.callsign} — ${flight.airline}`);
+}
 
 function detectBrowserLocation() {
   if (!navigator.geolocation) {
@@ -104,6 +147,7 @@ function renderFlight(flight) {
   if (!flight) {
     card.classList.add("hidden");
     status.textContent = "No aircraft currently within range.";
+    updateFlightMarker(null);
     return;
   }
 
@@ -117,6 +161,7 @@ function renderFlight(flight) {
   el("f-speed").textContent = `${flight.speed_kmh.toFixed(1)} km/h`;
   el("f-distance").textContent = `${flight.distance_km.toFixed(1)} km`;
   loadAircraftPhoto(flight.icao24);
+  updateFlightMarker(flight);
 }
 
 function setError(message) {
@@ -146,6 +191,8 @@ async function main() {
 
   const label = coords.city && coords.country ? `${coords.city}, ${coords.country} ` : "";
   el("location-info").textContent = `Your location: ${label}(${coords.lat.toFixed(4)}, ${coords.lon.toFixed(4)})`;
+
+  initMap(coords);
 
   await refresh();
   setInterval(refresh, REFRESH_MS);

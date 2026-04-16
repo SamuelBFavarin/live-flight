@@ -38,6 +38,25 @@ header h1 {
   font-size: 0.9rem;
 }
 
+#map-section {
+  margin-top: 1.5rem;
+}
+
+#map {
+  height: 360px;
+  width: 100%;
+  border-radius: 0.75rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.plane-icon {
+  font-size: 20px;
+  line-height: 20px;
+  text-align: center;
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.7);
+}
+
 #flight-section {
   margin-top: 2rem;
 }

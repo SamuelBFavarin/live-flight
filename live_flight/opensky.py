@@ -30,6 +30,8 @@ class ClosestFlight:
     callsign: str
     icao24: str
     origin_country: str
+    latitude: float
+    longitude: float
     departure: Airport
     arrival: Airport
     aircraft_type: str
@@ -124,6 +126,8 @@ def find_closest_flight(api: OpenSkyApi, lat: float, lon: float) -> ClosestFligh
         callsign=(state.callsign or "").strip() or "N/A",
         icao24=state.icao24,
         origin_country=state.origin_country or "N/A",
+        latitude=state.latitude,
+        longitude=state.longitude,
         departure=_lookup_airport(departure_icao),
         arrival=_lookup_airport(arrival_icao),
         aircraft_type=aircraft_type,

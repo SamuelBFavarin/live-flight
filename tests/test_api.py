@@ -15,6 +15,8 @@ def _sample_flight() -> ClosestFlight:
         callsign="GOL1234",
         icao24="e48e38",
         origin_country="Brazil",
+        latitude=-23.5,
+        longitude=-46.6,
         departure=Airport(icao="SBGR", name="Guarulhos Intl", city="Sao Paulo", country="BR"),
         arrival=Airport(icao="SBSP", name="Congonhas", city="Sao Paulo", country="BR"),
         aircraft_type="Boeing 737-8",
@@ -60,6 +62,8 @@ class TestClosestFlightEndpoint:
         assert body["flight"]["callsign"] == "GOL1234"
         assert body["flight"]["airline"] == "Gol Linhas Aereas"
         assert body["flight"]["aircraft_type"] == "Boeing 737-8"
+        assert body["flight"]["latitude"] == pytest.approx(-23.5)
+        assert body["flight"]["longitude"] == pytest.approx(-46.6)
         assert body["flight"]["departure"] == {
             "icao": "SBGR",
             "name": "Guarulhos Intl",

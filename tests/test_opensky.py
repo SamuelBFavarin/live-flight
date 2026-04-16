@@ -258,6 +258,8 @@ class TestFindClosestFlight:
         assert isinstance(result, ClosestFlight)
         assert result.callsign == "GOL1234"
         assert result.origin_country == "Brazil"
+        assert result.latitude == pytest.approx(0.1)
+        assert result.longitude == pytest.approx(0.1)
         assert result.departure == Airport(icao="SBGR", name="SBGR Name", city="Sao Paulo", country="BR")
         assert result.arrival == Airport(icao="SBSP", name="SBSP Name", city="Sao Paulo", country="BR")
         assert result.aircraft_type == "Boeing 737-8"
