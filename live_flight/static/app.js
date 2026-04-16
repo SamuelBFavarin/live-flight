@@ -166,6 +166,8 @@ function renderFlight(flight) {
   el("f-origin").textContent = formatAirport(flight.departure);
   el("f-destination").textContent = formatAirport(flight.arrival);
   el("f-speed").textContent = `${flight.speed_kmh.toFixed(1)} km/h`;
+  el("f-altitude").textContent =
+    flight.altitude_m == null ? "N/A" : `${Math.round(flight.altitude_m).toLocaleString()} m`;
   el("f-distance").textContent = `${flight.distance_km.toFixed(1)} km`;
   loadAircraftPhoto(flight.icao24);
   updateFlightMarker(flight);

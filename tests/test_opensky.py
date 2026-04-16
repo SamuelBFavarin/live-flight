@@ -25,6 +25,8 @@ def _state(**kwargs) -> SimpleNamespace:
         longitude=0.0,
         velocity=100.0,
         true_track=90.0,
+        baro_altitude=10000.0,
+        geo_altitude=10050.0,
     )
     defaults.update(kwargs)
     return SimpleNamespace(**defaults)
@@ -248,6 +250,8 @@ class TestFindClosestFlight:
             longitude=0.1,
             velocity=250.0,
             true_track=135.0,
+            baro_altitude=11582.4,
+            geo_altitude=11600.0,
         )
         far = _state(icao24="far01", latitude=5.0, longitude=5.0)
         api.get_states.return_value = SimpleNamespace(states=[far, near])
@@ -263,6 +267,7 @@ class TestFindClosestFlight:
         assert result.latitude == pytest.approx(0.1)
         assert result.longitude == pytest.approx(0.1)
         assert result.true_track == pytest.approx(135.0)
+        assert result.altitude_m == pytest.approx(11582.4)
         assert result.departure == Airport(icao="SBGR", name="SBGR Name", city="Sao Paulo", country="BR")
         assert result.arrival == Airport(icao="SBSP", name="SBSP Name", city="Sao Paulo", country="BR")
         assert result.aircraft_type == "Boeing 737-8"
@@ -279,7 +284,15 @@ class TestFindClosestFlight:
         mock_airport.return_value = Airport.unknown()
         api = MagicMock()
         api.get_states.return_value = SimpleNamespace(states=[
-            _state(callsign=None, velocity=None, latitude=0.1, longitude=0.1, true_track=None),
+            _state(
+                callsign=None,
+                velocity=None,
+                latitude=0.1,
+                longitude=0.1,
+                true_track=None,
+                baro_altitude=None,
+                geo_altitude=None,
+            ),
         ])
         api.get_flights_by_aircraft.return_value = []
 
@@ -293,6 +306,23 @@ class TestFindClosestFlight:
         assert result.aircraft_type == "N/A"
         assert result.airline == "N/A"
         assert result.true_track is None
+        assert result.altitude_m is None
+
+    @patch("live_flight.opensky._lookup_airport")
+    @patch("live_flight.opensky._lookup_aircraft_info")
+    def test_falls_back_to_geo_altitude_when_baro_missing(self, mock_aircraft, mock_airport):
+        mock_aircraft.return_value = ("N/A", "N/A")
+        mock_airport.return_value = Airport.unknown()
+        api = MagicMock()
+        api.get_states.return_value = SimpleNamespace(states=[
+            _state(latitude=0.1, longitude=0.1, baro_altitude=None, geo_altitude=9750.0),
+        ])
+        api.get_flights_by_aircraft.return_value = []
+
+        result = find_closest_flight(api, 0.0, 0.0)
+
+        assert result is not None
+        assert result.altitude_m == pytest.approx(9750.0)
 
     def test_uses_bounding_box_around_location(self):
         api = MagicMock()

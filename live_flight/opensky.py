@@ -33,6 +33,7 @@ class ClosestFlight:
     latitude: float
     longitude: float
     true_track: float | None
+    altitude_m: float | None
     departure: Airport
     arrival: Airport
     aircraft_type: str
@@ -122,6 +123,7 @@ def find_closest_flight(api: OpenSkyApi, lat: float, lon: float) -> ClosestFligh
     departure_icao, arrival_icao = _lookup_route(api, state.icao24)
     aircraft_type, airline = _lookup_aircraft_info(state.icao24)
     speed_kmh = (state.velocity or 0.0) * 3.6
+    altitude_m = state.baro_altitude if state.baro_altitude is not None else state.geo_altitude
 
     return ClosestFlight(
         callsign=(state.callsign or "").strip() or "N/A",
@@ -130,6 +132,7 @@ def find_closest_flight(api: OpenSkyApi, lat: float, lon: float) -> ClosestFligh
         latitude=state.latitude,
         longitude=state.longitude,
         true_track=state.true_track,
+        altitude_m=altitude_m,
         departure=_lookup_airport(departure_icao),
         arrival=_lookup_airport(arrival_icao),
         aircraft_type=aircraft_type,

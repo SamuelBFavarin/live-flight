@@ -18,6 +18,7 @@ def _sample_flight() -> ClosestFlight:
         latitude=-23.5,
         longitude=-46.6,
         true_track=225.0,
+        altitude_m=11582.4,
         departure=Airport(icao="SBGR", name="Guarulhos Intl", city="Sao Paulo", country="BR"),
         arrival=Airport(icao="SBSP", name="Congonhas", city="Sao Paulo", country="BR"),
         aircraft_type="Boeing 737-8",
@@ -66,6 +67,7 @@ class TestClosestFlightEndpoint:
         assert body["flight"]["latitude"] == pytest.approx(-23.5)
         assert body["flight"]["longitude"] == pytest.approx(-46.6)
         assert body["flight"]["true_track"] == pytest.approx(225.0)
+        assert body["flight"]["altitude_m"] == pytest.approx(11582.4)
         assert body["flight"]["departure"] == {
             "icao": "SBGR",
             "name": "Guarulhos Intl",

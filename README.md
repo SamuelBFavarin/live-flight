@@ -61,6 +61,7 @@ Example response:
     "latitude": -23.512,
     "longitude": -46.623,
     "true_track": 225.4,
+    "altitude_m": 11582.4,
     "departure": {
       "icao": "SBGR",
       "name": "Guarulhos International Airport",
