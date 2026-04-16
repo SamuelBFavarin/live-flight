@@ -11,10 +11,13 @@ python = "^3.10"
 opensky-api = { git = "https://github.com/openskynetwork/opensky-api.git", subdirectory = "python" }
 python-dotenv = "^1.0.1"
 requests = "^2.32.3"
+fastapi = "^0.115"
+uvicorn = { extras = ["standard"], version = "^0.32" }
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0"
 pytest-cov = "^5.0"
+httpx = "^0.28"
 
 [tool.poetry.scripts]
 live-flight = "live_flight.main:main"

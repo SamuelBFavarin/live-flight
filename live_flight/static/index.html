@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Live Flight</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Live Flight</h1>
+        <p id="location-info" class="muted">Detecting your location…</p>
+      </header>
+
+      <section id="flight-section">
+        <p id="flight-status">Waiting for location…</p>
+
+        <div id="flight-card" class="card hidden">
+          <div class="row"><span class="label">Callsign</span><span id="f-callsign" class="value"></span></div>
+          <div class="row"><span class="label">Airline</span><span id="f-airline" class="value"></span></div>
+          <div class="row"><span class="label">Aircraft</span><span id="f-aircraft" class="value"></span></div>
+          <div class="row"><span class="label">Origin</span><span id="f-origin" class="value"></span></div>
+          <div class="row"><span class="label">Destination</span><span id="f-destination" class="value"></span></div>
+          <div class="row"><span class="label">Speed</span><span id="f-speed" class="value"></span></div>
+          <div class="row"><span class="label">Distance</span><span id="f-distance" class="value"></span></div>
+        </div>
+
+        <p id="last-updated" class="muted"></p>
+      </section>
+
+      <footer>
+        <p class="muted">
+          Auto-refreshes every 20 seconds. Location via
+          <a href="https://ipapi.co" target="_blank" rel="noopener">ipapi.co</a>.
+        </p>
+      </footer>
+    </main>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>
