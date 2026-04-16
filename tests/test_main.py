@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from live_flight import main as main_module
-from live_flight.opensky import ClosestFlight
+from live_flight.opensky import Airport, ClosestFlight
 
 
 @patch.dict("os.environ", {"OPENSKY_CLIENT_ID": "id", "OPENSKY_CLIENT_SECRET": "secret"}, clear=True)
@@ -33,8 +33,8 @@ def test_print_flight_renders_closest_flight(mock_find, capsys):
     mock_find.return_value = ClosestFlight(
         callsign="GOL1234",
         origin_country="Brazil",
-        departure_airport="SBGR",
-        arrival_airport="SBSP",
+        departure=Airport(icao="SBGR", name="Guarulhos Intl", city="Sao Paulo", country="BR"),
+        arrival=Airport(icao="SBSP", name="Congonhas", city="Sao Paulo", country="BR"),
         aircraft_type="Boeing 737-8",
         airline="Gol Linhas Aereas",
         speed_kmh=900.0,
@@ -48,8 +48,11 @@ def test_print_flight_renders_closest_flight(mock_find, capsys):
     assert "Boeing 737-8" in out
     assert "Gol Linhas Aereas" in out
     assert "SBGR" in out
+    assert "Guarulhos Intl" in out
     assert "SBSP" in out
-    assert "Brazil" in out
+    assert "Congonhas" in out
+    assert "Sao Paulo" in out
+    assert "BR" in out
     assert "900.0 km/h" in out
     assert "12.5 km" in out
 

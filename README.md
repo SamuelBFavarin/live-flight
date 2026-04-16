@@ -35,10 +35,11 @@ python -m live_flight.main
 
 1. Detects your location via IP geolocation (`ipapi.co`).
 2. Authenticates against OpenSky using the credentials loaded from `.env`.
-3. Every 20 seconds, queries aircraft within a bounding box around your location and prints the closest one — callsign, airline, aircraft model, origin, destination, speed, and distance.
+3. Every 20 seconds, queries aircraft within a bounding box around your location and prints the closest one — callsign, airline, aircraft model, origin & destination airports (ICAO code, name, city/region, country), speed, and distance.
 
 ### Notes
 
-- Origin/destination airports are resolved from OpenSky's recent flight history for the aircraft (ICAO codes). When no history is available, the field shows `N/A` and `origin_country` from the state vector is shown alongside.
-- Aircraft model and operating airline are resolved by looking up the ICAO24 address against the public [hexdb.io](https://hexdb.io/) aircraft registry (fields `Manufacturer` + `Type` and `RegisteredOwners` respectively). If the registry returns no match, the fields show `N/A`.
+- Origin/destination ICAO codes come from OpenSky's recent flight history for the aircraft. When no history is available, the airport shows as `N/A`.
+- Each ICAO airport code is enriched with its name, city/region and country code via the public [hexdb.io](https://hexdb.io/) airport registry (`airport`, `region_name`, `country_code` fields). `region_name` is often the city for major commercial airports but can be a region/state for smaller ones.
+- Aircraft model and operating airline are resolved by looking up the ICAO24 address against the same registry (fields `Manufacturer` + `Type` and `RegisteredOwners` respectively). If the registry returns no match, the fields show `N/A`.
 - Without credentials the app falls back to anonymous requests, which OpenSky rate-limits heavily.

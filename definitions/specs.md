@@ -17,6 +17,7 @@ Goal: Based in my current location, show me the information of the closest fligh
 - Every 20 seconds the system should refresh the data, showing the closest flight
 - It at least show the: flight identification, airline, aircraft model, origin, destination and speed
 - The aircraft model and operating airline must to be derived from the aircraft's ICAO24 address using a public aircraft registry (e.g. `hexdb.io`); when the registry does not return a match, show `N/A`
+- Origin and destination must to include the airport ICAO code, airport name, city/region and country code; these details must to be resolved from a public airport registry (e.g. `hexdb.io`). When the registry does not return a match, show `N/A` for the missing fields
 - The information should be showed in the console, we don't need UI for this project
 
 

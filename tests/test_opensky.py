@@ -4,9 +4,11 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from live_flight.opensky import (
+    Airport,
     ClosestFlight,
     _bounding_box,
     _lookup_aircraft_info,
+    _lookup_airport,
     _lookup_route,
     _nearest_state,
     find_closest_flight,
@@ -170,6 +172,54 @@ class TestLookupAircraftInfo:
         assert "hexdb.io" in url
 
 
+class TestLookupAirport:
+    @patch("live_flight.opensky.requests.get")
+    def test_builds_airport_from_hexdb_response(self, mock_get):
+        mock_response = MagicMock()
+        mock_response.json.return_value = {
+            "airport": "Guarulhos International Airport",
+            "region_name": "Sao Paulo",
+            "country_code": "BR",
+            "icao": "SBGR",
+        }
+        mock_get.return_value = mock_response
+
+        result = _lookup_airport("SBGR")
+
+        assert result == Airport(
+            icao="SBGR",
+            name="Guarulhos International Airport",
+            city="Sao Paulo",
+            country="BR",
+        )
+
+    @patch("live_flight.opensky.requests.get")
+    def test_na_icao_does_not_call_api(self, mock_get):
+        result = _lookup_airport("N/A")
+        assert result == Airport.unknown()
+        mock_get.assert_not_called()
+
+    @patch("live_flight.opensky.requests.get")
+    def test_empty_icao_does_not_call_api(self, mock_get):
+        result = _lookup_airport("")
+        assert result == Airport.unknown()
+        mock_get.assert_not_called()
+
+    @patch("live_flight.opensky.requests.get")
+    def test_http_error_preserves_icao(self, mock_get):
+        mock_get.side_effect = RuntimeError("network down")
+        result = _lookup_airport("SBGR")
+        assert result == Airport.unknown(icao="SBGR")
+
+    @patch("live_flight.opensky.requests.get")
+    def test_missing_fields_fall_back_to_na(self, mock_get):
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"airport": None, "region_name": None, "country_code": None}
+        mock_get.return_value = mock_response
+        result = _lookup_airport("XXXX")
+        assert result == Airport(icao="XXXX", name="N/A", city="N/A", country="N/A")
+
+
 class TestFindClosestFlight:
     def test_no_response_returns_none(self):
         api = MagicMock()
@@ -181,9 +231,13 @@ class TestFindClosestFlight:
         api.get_states.return_value = SimpleNamespace(states=[])
         assert find_closest_flight(api, 0.0, 0.0) is None
 
+    @patch("live_flight.opensky._lookup_airport")
     @patch("live_flight.opensky._lookup_aircraft_info")
-    def test_builds_closest_flight_with_route(self, mock_aircraft):
+    def test_builds_closest_flight_with_route(self, mock_aircraft, mock_airport):
         mock_aircraft.return_value = ("Boeing 737-8", "Gol")
+        mock_airport.side_effect = lambda icao: Airport(
+            icao=icao, name=f"{icao} Name", city="Sao Paulo", country="BR"
+        )
         api = MagicMock()
         near = _state(
             icao24="near01",
@@ -204,17 +258,20 @@ class TestFindClosestFlight:
         assert isinstance(result, ClosestFlight)
         assert result.callsign == "GOL1234"
         assert result.origin_country == "Brazil"
-        assert result.departure_airport == "SBGR"
-        assert result.arrival_airport == "SBSP"
+        assert result.departure == Airport(icao="SBGR", name="SBGR Name", city="Sao Paulo", country="BR")
+        assert result.arrival == Airport(icao="SBSP", name="SBSP Name", city="Sao Paulo", country="BR")
         assert result.aircraft_type == "Boeing 737-8"
         assert result.airline == "Gol"
         assert result.speed_kmh == pytest.approx(250.0 * 3.6)
         assert result.distance_km == pytest.approx(haversine_km(0.0, 0.0, 0.1, 0.1))
         mock_aircraft.assert_called_once_with("near01")
+        assert [c.args[0] for c in mock_airport.call_args_list] == ["SBGR", "SBSP"]
 
+    @patch("live_flight.opensky._lookup_airport")
     @patch("live_flight.opensky._lookup_aircraft_info")
-    def test_handles_missing_callsign_and_velocity(self, mock_aircraft):
+    def test_handles_missing_callsign_and_velocity(self, mock_aircraft, mock_airport):
         mock_aircraft.return_value = ("N/A", "N/A")
+        mock_airport.return_value = Airport.unknown()
         api = MagicMock()
         api.get_states.return_value = SimpleNamespace(states=[
             _state(callsign=None, velocity=None, latitude=0.1, longitude=0.1),
@@ -226,8 +283,8 @@ class TestFindClosestFlight:
         assert result is not None
         assert result.callsign == "N/A"
         assert result.speed_kmh == 0.0
-        assert result.departure_airport == "N/A"
-        assert result.arrival_airport == "N/A"
+        assert result.departure == Airport.unknown()
+        assert result.arrival == Airport.unknown()
         assert result.aircraft_type == "N/A"
         assert result.airline == "N/A"
 

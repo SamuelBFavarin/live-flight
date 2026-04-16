@@ -7,9 +7,13 @@ from dotenv import load_dotenv
 from opensky_api import OpenSkyApi
 
 from live_flight.location import get_current_location
-from live_flight.opensky import find_closest_flight
+from live_flight.opensky import Airport, find_closest_flight
 
 REFRESH_SECONDS = 20
+
+
+def _format_airport(airport: Airport) -> str:
+    return f"{airport.icao} — {airport.name} ({airport.city}, {airport.country})"
 
 
 def _build_api() -> OpenSkyApi:
@@ -37,8 +41,8 @@ def _print_flight(lat: float, lon: float, api: OpenSkyApi) -> None:
         f"[{timestamp}] closest flight: {flight.callsign} | "
         f"airline: {flight.airline} | "
         f"aircraft: {flight.aircraft_type} | "
-        f"origin: {flight.departure_airport} ({flight.origin_country}) | "
-        f"destination: {flight.arrival_airport} | "
+        f"origin: {_format_airport(flight.departure)} | "
+        f"destination: {_format_airport(flight.arrival)} | "
         f"speed: {flight.speed_kmh:.1f} km/h | "
         f"distance: {flight.distance_km:.1f} km"
     )
