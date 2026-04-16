@@ -3,9 +3,49 @@ const MAP_RADIUS_METERS = 50_000; // 50 km radius -> ~100 km viewport
 
 const el = (id) => document.getElementById(id);
 
+const EARTH_RADIUS_M = 6_371_000;
+
 let map = null;
 let userMarker = null;
 let flightMarker = null;
+let deadReckonState = null;
+
+function destinationPoint(lat, lon, distanceM, bearingDeg) {
+  const angular = distanceM / EARTH_RADIUS_M;
+  const bearing = (bearingDeg * Math.PI) / 180;
+  const lat1 = (lat * Math.PI) / 180;
+  const lon1 = (lon * Math.PI) / 180;
+  const lat2 = Math.asin(
+    Math.sin(lat1) * Math.cos(angular) +
+      Math.cos(lat1) * Math.sin(angular) * Math.cos(bearing),
+  );
+  const lon2 =
+    lon1 +
+    Math.atan2(
+      Math.sin(bearing) * Math.sin(angular) * Math.cos(lat1),
+      Math.cos(angular) - Math.sin(lat1) * Math.sin(lat2),
+    );
+  return [(lat2 * 180) / Math.PI, (lon2 * 180) / Math.PI];
+}
+
+function animationFrame(timestamp) {
+  if (deadReckonState && flightMarker) {
+    const dt = (timestamp - deadReckonState.lastFrameTime) / 1000;
+    deadReckonState.lastFrameTime = timestamp;
+    const [nextLat, nextLon] = destinationPoint(
+      deadReckonState.lat,
+      deadReckonState.lon,
+      deadReckonState.speedMps * dt,
+      deadReckonState.heading,
+    );
+    deadReckonState.lat = nextLat;
+    deadReckonState.lon = nextLon;
+    flightMarker.setLatLng([nextLat, nextLon]);
+  }
+  requestAnimationFrame(animationFrame);
+}
+
+requestAnimationFrame(animationFrame);
 
 const PLANE_SVG = `<svg viewBox="0 0 24 24" width="28" height="28" xmlns="http://www.w3.org/2000/svg"><path d="M21,16v-2l-8-5V3.5C13,2.67 12.33,2 11.5,2C10.67,2 10,2.67 10,3.5V9l-8,5v2l8-2.5V19l-2,1.5V22l3.5-1l3.5,1v-1.5L13,19v-5.5L21,16z" fill="#f8fafc" stroke="#0f172a" stroke-width="0.5" stroke-linejoin="round"/></svg>`;
 
@@ -39,6 +79,7 @@ function updateFlightMarker(flight) {
       flightMarker.remove();
       flightMarker = null;
     }
+    deadReckonState = null;
     return;
   }
   const position = [flight.latitude, flight.longitude];
@@ -50,6 +91,22 @@ function updateFlightMarker(flight) {
     flightMarker.setIcon(icon);
   }
   flightMarker.bindPopup(`${flight.callsign} — ${flight.airline}`);
+
+  if (
+    Number.isFinite(flight.true_track) &&
+    Number.isFinite(flight.speed_kmh) &&
+    flight.speed_kmh > 0
+  ) {
+    deadReckonState = {
+      lat: flight.latitude,
+      lon: flight.longitude,
+      heading: flight.true_track,
+      speedMps: flight.speed_kmh / 3.6,
+      lastFrameTime: performance.now(),
+    };
+  } else {
+    deadReckonState = null;
+  }
 }
 
 function detectBrowserLocation() {
