@@ -8,3 +8,4 @@ dist/
 build/
 .poetry/
 .DS_Store
+.coverage
