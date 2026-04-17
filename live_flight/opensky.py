@@ -10,6 +10,7 @@ SEARCH_RADIUS_DEG = 3.0
 FLIGHT_HISTORY_WINDOW_HOURS = 24
 AIRCRAFT_DB_URL = "https://hexdb.io/api/v1/aircraft"
 AIRPORT_DB_URL = "https://hexdb.io/api/v1/airport/icao"
+ROUTE_DB_URL = "https://hexdb.io/api/v1/route/icao"
 HEXDB_TIMEOUT = 5.0
 
 
@@ -96,6 +97,33 @@ def _lookup_airport(icao: str) -> Airport:
     )
 
 
+def _lookup_route_by_callsign(callsign: str) -> tuple[str, str]:
+    if not callsign or callsign == "N/A":
+        return ("N/A", "N/A")
+    try:
+        response = requests.get(f"{ROUTE_DB_URL}/{callsign}", timeout=HEXDB_TIMEOUT)
+        response.raise_for_status()
+        data = response.json()
+    except Exception:
+        return ("N/A", "N/A")
+    route = (data.get("route") or "").strip()
+    if "-" not in route:
+        return ("N/A", "N/A")
+    parts = [part.strip() for part in route.split("-")]
+    return (parts[0] or "N/A", parts[-1] or "N/A")
+
+
+def _resolve_route(api: OpenSkyApi, icao24: str, callsign: str) -> tuple[str, str]:
+    dep, arr = _lookup_route_by_callsign(callsign)
+    if dep != "N/A" and arr != "N/A":
+        return dep, arr
+    hist_dep, hist_arr = _lookup_route(api, icao24)
+    return (
+        dep if dep != "N/A" else hist_dep,
+        arr if arr != "N/A" else hist_arr,
+    )
+
+
 def _lookup_route(api: OpenSkyApi, icao24: str) -> tuple[str, str]:
     now = int(time.time())
     begin = now - FLIGHT_HISTORY_WINDOW_HOURS * 3600
@@ -120,13 +148,14 @@ def find_closest_flight(api: OpenSkyApi, lat: float, lon: float) -> ClosestFligh
         return None
 
     state, distance = nearest
-    departure_icao, arrival_icao = _lookup_route(api, state.icao24)
+    callsign = (state.callsign or "").strip() or "N/A"
+    departure_icao, arrival_icao = _resolve_route(api, state.icao24, callsign)
     aircraft_type, airline = _lookup_aircraft_info(state.icao24)
     speed_kmh = (state.velocity or 0.0) * 3.6
     altitude_m = state.baro_altitude if state.baro_altitude is not None else state.geo_altitude
 
     return ClosestFlight(
-        callsign=(state.callsign or "").strip() or "N/A",
+        callsign=callsign,
         icao24=state.icao24,
         origin_country=state.origin_country or "N/A",
         latitude=state.latitude,

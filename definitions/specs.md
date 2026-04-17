@@ -48,6 +48,10 @@ Goal: Expose an HTTP API that, given a caller-supplied location (latitude / long
 - The `/closest-flight` endpoint must to accept latitude and longitude from the caller; it does not detect the location server-side (the eventual web UI will use the browser geolocation API and forward the coordinates)
 - The response must to at least include: flight identification, airline, aircraft model, origin, destination, current speed, current altitude in metres (barometric when available, geometric as a fallback), the aircraft's current latitude and longitude (so the client can plot it on a map) and the aircraft's true track (heading in decimal degrees clockwise from north) so the client can rotate the aircraft icon. When OpenSky does not provide the heading or the altitude, those fields must to be `null`
 - The aircraft model and operating airline must to be derived from the aircraft's ICAO24 address using a public aircraft registry (e.g. `hexdb.io`); when the registry does not return a match, show `N/A`
+- The origin and destination ICAO codes must to be resolved in two stages to maximize coverage of currently-airborne flights:
+  1. First, a callsign → route lookup against a public schedule registry (e.g. hexdb.io's `/api/v1/route/icao/{callsign}`) using the callsign from the OpenSky state vector. This covers most scheduled commercial flights already in the air (OpenSky's flight history rarely does, because it only publishes routes after landing).
+  2. When the callsign lookup returns no data (or no callsign is available), fall back to OpenSky's recent flight history for the aircraft (`get_flights_by_aircraft`).
+  When both sources miss, the ICAO code must to be `N/A`.
 - Origin and destination must to include the airport ICAO code, airport name, city/region and country code; these details must to be resolved from a public airport registry (e.g. `hexdb.io`). When the registry does not return a match, show `N/A` for the missing fields
 
 

@@ -156,7 +156,7 @@ Coverage is printed automatically (configured via `pyproject.toml`). CI runs the
 
 ## Notes
 
-- Origin/destination ICAO codes come from OpenSky's recent flight history for the aircraft. When no history is available, the airport shows as `N/A`.
+- Origin/destination ICAO codes are resolved in two stages: first by looking up the callsign against hexdb.io's schedule registry (`/api/v1/route/icao/{callsign}`) — this covers most live commercial flights — and, if that comes up empty, from OpenSky's recent flight history for the aircraft. When both sources miss, the airport shows as `N/A`.
 - Each ICAO airport code is enriched with its name, city/region and country code via hexdb.io's airport registry (`airport`, `region_name`, `country_code`). `region_name` is often the city for major commercial airports but can be a region/state for smaller ones.
 - Aircraft model and operating airline are resolved by looking up the ICAO24 address against the same registry (`Manufacturer` + `Type` and `RegisteredOwners`). If the registry returns no match, the fields show `N/A`.
 - Without OpenSky credentials, the app falls back to anonymous requests, which OpenSky rate-limits heavily.
