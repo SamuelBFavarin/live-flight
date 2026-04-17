@@ -203,14 +203,36 @@ function showPhoto(photo) {
   credit.classList.remove("hidden");
 }
 
+const photoCache = new Map();
+let currentPhotoIcao = null;
+
+function applyPhoto(photo) {
+  if (photo) showPhoto(photo);
+  else hidePhoto();
+}
+
 async function loadAircraftPhoto(icao24) {
+  if (!icao24) {
+    hidePhoto();
+    currentPhotoIcao = null;
+    return;
+  }
+  if (icao24 === currentPhotoIcao) {
+    return;
+  }
+  if (photoCache.has(icao24)) {
+    applyPhoto(photoCache.get(icao24));
+    currentPhotoIcao = icao24;
+    return;
+  }
   hidePhoto();
-  if (!icao24) return;
   try {
     const response = await fetch(`/aircraft-photo?icao24=${icao24}`);
     if (!response.ok) return;
     const { photo } = await response.json();
-    if (photo) showPhoto(photo);
+    photoCache.set(icao24, photo);
+    applyPhoto(photo);
+    currentPhotoIcao = icao24;
   } catch (err) {
     console.warn(`photo lookup failed: ${err.message}`);
   }
