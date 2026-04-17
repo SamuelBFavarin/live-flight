@@ -59,8 +59,8 @@ function planeIcon(heading) {
   });
 }
 
-function initMap(coords) {
-  const center = L.latLng(coords.lat, coords.lon);
+function initMap(initialCoords) {
+  const center = L.latLng(initialCoords.lat, initialCoords.lon);
   map = L.map("map").fitBounds(center.toBounds(MAP_RADIUS_METERS * 2));
   L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
     maxZoom: 19,
@@ -69,7 +69,19 @@ function initMap(coords) {
       '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>',
   }).addTo(map);
   L.control.scale({ imperial: false, metric: true, maxWidth: 150 }).addTo(map);
-  userMarker = L.marker(center).addTo(map).bindPopup("You are here");
+  userMarker = L.marker(center, { draggable: true })
+    .addTo(map)
+    .bindTooltip("Drag me to explore another location", { direction: "top", offset: [0, -10] });
+  userMarker.on("dragend", onUserMarkerDragEnd);
+}
+
+async function onUserMarkerDragEnd(event) {
+  const latlng = event.target.getLatLng();
+  coords = { lat: latlng.lat, lon: latlng.lng, city: "", country: "" };
+  el("location-info").textContent =
+    `Custom location: (${coords.lat.toFixed(4)}, ${coords.lon.toFixed(4)})`;
+  el("flight-status").textContent = "Fetching closest flight for the new location…";
+  await refresh();
 }
 
 function updateFlightMarker(flight) {
