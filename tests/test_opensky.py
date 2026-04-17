@@ -233,6 +233,15 @@ class TestLookupAirport:
         }
         mock_get.return_value = mock_response
 
+        mock_response.json.return_value = {
+            "airport": "Guarulhos International Airport",
+            "region_name": "Sao Paulo",
+            "country_code": "BR",
+            "icao": "SBGR",
+            "latitude": -23.4322,
+            "longitude": -46.4692,
+        }
+
         result = _lookup_airport("SBGR")
 
         assert result == Airport(
@@ -240,6 +249,8 @@ class TestLookupAirport:
             name="Guarulhos International Airport",
             city="Sao Paulo",
             country="BR",
+            latitude=-23.4322,
+            longitude=-46.4692,
         )
 
     @patch("live_flight.opensky.requests.get")
@@ -266,7 +277,9 @@ class TestLookupAirport:
         mock_response.json.return_value = {"airport": None, "region_name": None, "country_code": None}
         mock_get.return_value = mock_response
         result = _lookup_airport("XXXX")
-        assert result == Airport(icao="XXXX", name="N/A", city="N/A", country="N/A")
+        assert result == Airport(
+            icao="XXXX", name="N/A", city="N/A", country="N/A", latitude=None, longitude=None
+        )
 
 
 class TestFindClosestFlight:
@@ -286,7 +299,12 @@ class TestFindClosestFlight:
     def test_builds_closest_flight_with_route(self, mock_aircraft, mock_airport, mock_callsign_route):
         mock_aircraft.return_value = ("Boeing 737-8", "Gol")
         mock_airport.side_effect = lambda icao: Airport(
-            icao=icao, name=f"{icao} Name", city="Sao Paulo", country="BR"
+            icao=icao,
+            name=f"{icao} Name",
+            city="Sao Paulo",
+            country="BR",
+            latitude=-23.4,
+            longitude=-46.5,
         )
         mock_callsign_route.return_value = ("SBGR", "SBSP")
         api = MagicMock()
@@ -313,8 +331,14 @@ class TestFindClosestFlight:
         assert result.longitude == pytest.approx(0.1)
         assert result.true_track == pytest.approx(135.0)
         assert result.altitude_m == pytest.approx(11582.4)
-        assert result.departure == Airport(icao="SBGR", name="SBGR Name", city="Sao Paulo", country="BR")
-        assert result.arrival == Airport(icao="SBSP", name="SBSP Name", city="Sao Paulo", country="BR")
+        assert result.departure == Airport(
+            icao="SBGR", name="SBGR Name", city="Sao Paulo", country="BR",
+            latitude=-23.4, longitude=-46.5,
+        )
+        assert result.arrival == Airport(
+            icao="SBSP", name="SBSP Name", city="Sao Paulo", country="BR",
+            latitude=-23.4, longitude=-46.5,
+        )
         assert result.aircraft_type == "Boeing 737-8"
         assert result.airline == "Gol"
         assert result.speed_kmh == pytest.approx(250.0 * 3.6)
@@ -387,7 +411,8 @@ class TestFindClosestFlight:
     ):
         mock_aircraft.return_value = ("N/A", "N/A")
         mock_airport.side_effect = lambda icao: Airport(
-            icao=icao, name=f"{icao} Name", city="City", country="US"
+            icao=icao, name=f"{icao} Name", city="City", country="US",
+            latitude=40.0, longitude=-100.0,
         )
         mock_callsign_route.return_value = ("N/A", "N/A")
         api = MagicMock()

@@ -25,8 +25,14 @@ def _sample_flight() -> ClosestFlight:
         longitude=-46.6,
         true_track=225.0,
         altitude_m=11582.4,
-        departure=Airport(icao="SBGR", name="Guarulhos Intl", city="Sao Paulo", country="BR"),
-        arrival=Airport(icao="SBSP", name="Congonhas", city="Sao Paulo", country="BR"),
+        departure=Airport(
+            icao="SBGR", name="Guarulhos Intl", city="Sao Paulo", country="BR",
+            latitude=-23.4322, longitude=-46.4692,
+        ),
+        arrival=Airport(
+            icao="SBSP", name="Congonhas", city="Sao Paulo", country="BR",
+            latitude=-23.6261, longitude=-46.6564,
+        ),
         aircraft_type="Boeing 737-8",
         airline="Gol Linhas Aereas",
         speed_kmh=900.0,
@@ -79,6 +85,8 @@ class TestClosestFlightEndpoint:
             "name": "Guarulhos Intl",
             "city": "Sao Paulo",
             "country": "BR",
+            "latitude": pytest.approx(-23.4322),
+            "longitude": pytest.approx(-46.4692),
         }
         assert body["flight"]["arrival"]["icao"] == "SBSP"
 

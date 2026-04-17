@@ -8,6 +8,7 @@ const EARTH_RADIUS_M = 6_371_000;
 let map = null;
 let userMarker = null;
 let flightMarker = null;
+let flightPath = null;
 let deadReckonState = null;
 
 function destinationPoint(lat, lon, distanceM, bearingDeg) {
@@ -41,6 +42,10 @@ function animationFrame(timestamp) {
     deadReckonState.lat = nextLat;
     deadReckonState.lon = nextLon;
     flightMarker.setLatLng([nextLat, nextLon]);
+    if (flightPath) {
+      const [start] = flightPath.getLatLngs();
+      flightPath.setLatLngs([start, [nextLat, nextLon]]);
+    }
   }
   requestAnimationFrame(animationFrame);
 }
@@ -83,6 +88,39 @@ async function onUserMarkerDragEnd(event) {
   el("flight-status").textContent = "Fetching closest flight for the new location…";
   await refresh();
   scheduleRefreshTimer();
+}
+
+function updateFlightPath(flight) {
+  if (!map) return;
+  const departure = flight && flight.departure;
+  if (
+    !flight ||
+    !departure ||
+    departure.latitude == null ||
+    departure.longitude == null ||
+    flight.latitude == null ||
+    flight.longitude == null
+  ) {
+    if (flightPath) {
+      flightPath.remove();
+      flightPath = null;
+    }
+    return;
+  }
+  const points = [
+    [departure.latitude, departure.longitude],
+    [flight.latitude, flight.longitude],
+  ];
+  if (!flightPath) {
+    flightPath = L.polyline(points, {
+      color: "#38bdf8",
+      weight: 2,
+      opacity: 0.75,
+      dashArray: "6, 8",
+    }).addTo(map);
+  } else {
+    flightPath.setLatLngs(points);
+  }
 }
 
 function updateFlightMarker(flight) {
@@ -281,6 +319,7 @@ function renderFlight(flight) {
     card.classList.add("hidden");
     status.textContent = "No aircraft currently within range.";
     updateFlightMarker(null);
+    updateFlightPath(null);
     return;
   }
 
@@ -297,6 +336,7 @@ function renderFlight(flight) {
   el("f-distance").textContent = `${flight.distance_km.toFixed(1)} km`;
   loadAircraftPhoto(flight.icao24);
   updateFlightMarker(flight);
+  updateFlightPath(flight);
 }
 
 function setError(message) {

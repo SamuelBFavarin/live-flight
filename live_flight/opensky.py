@@ -20,10 +20,19 @@ class Airport:
     name: str
     city: str
     country: str
+    latitude: float | None
+    longitude: float | None
 
     @classmethod
     def unknown(cls, icao: str = "N/A") -> "Airport":
-        return cls(icao=icao, name="N/A", city="N/A", country="N/A")
+        return cls(
+            icao=icao,
+            name="N/A",
+            city="N/A",
+            country="N/A",
+            latitude=None,
+            longitude=None,
+        )
 
 
 @dataclass
@@ -89,11 +98,15 @@ def _lookup_airport(icao: str) -> Airport:
         data = response.json()
     except Exception:
         return Airport.unknown(icao=icao)
+    lat = data.get("latitude")
+    lon = data.get("longitude")
     return Airport(
         icao=icao,
         name=(data.get("airport") or "").strip() or "N/A",
         city=(data.get("region_name") or "").strip() or "N/A",
         country=(data.get("country_code") or "").strip() or "N/A",
+        latitude=float(lat) if isinstance(lat, (int, float)) else None,
+        longitude=float(lon) if isinstance(lon, (int, float)) else None,
     )
 
 
