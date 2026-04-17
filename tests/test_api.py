@@ -4,7 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from live_flight.api import app, limiter
-from live_flight.opensky import Airport, ClosestFlight
+from live_flight.opensky import AircraftTrack, Airport, ClosestFlight, TrackWaypoint
 from live_flight.photos import AircraftPhoto
 
 client = TestClient(app)
@@ -183,6 +183,76 @@ class TestClosestFlightRateLimit:
         for _ in range(15):
             response = client.get("/aircraft-photo", params={"icao24": "abcdef"})
             assert response.status_code == 200
+
+
+class TestFlightTrackEndpoint:
+    @patch("live_flight.api.fetch_aircraft_track")
+    def test_200_returns_serialized_track(self, mock_fetch):
+        mock_fetch.return_value = AircraftTrack(
+            icao24="abc123",
+            callsign="TAM3456",
+            start_time=1_700_000_000,
+            end_time=1_700_003_600,
+            path=[
+                TrackWaypoint(
+                    time=1_700_000_000,
+                    latitude=10.0,
+                    longitude=20.0,
+                    baro_altitude=9000.0,
+                    true_track=90.0,
+                    on_ground=False,
+                )
+            ],
+        )
+
+        response = client.get("/flight-track", params={"icao24": "ABC123"})
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body["track"]["icao24"] == "abc123"
+        assert body["track"]["callsign"] == "TAM3456"
+        assert body["track"]["path"][0]["latitude"] == pytest.approx(10.0)
+        assert body["track"]["path"][0]["on_ground"] is False
+        mock_fetch.assert_called_once()
+        assert mock_fetch.call_args[0][1] == "abc123"
+
+    @patch("live_flight.api.fetch_aircraft_track")
+    def test_200_with_null_when_no_track(self, mock_fetch):
+        mock_fetch.return_value = None
+        response = client.get("/flight-track", params={"icao24": "abcdef"})
+        assert response.status_code == 200
+        assert response.json() == {"track": None}
+
+    @pytest.mark.parametrize(
+        "params",
+        [
+            {},
+            {"icao24": ""},
+            {"icao24": "xyz"},
+            {"icao24": "12345"},
+            {"icao24": "1234567"},
+        ],
+    )
+    def test_400_on_invalid_icao24(self, params):
+        response = client.get("/flight-track", params=params)
+        assert response.status_code == 400
+
+    @patch("live_flight.api.fetch_aircraft_track")
+    def test_500_on_unexpected_error(self, mock_fetch):
+        mock_fetch.side_effect = RuntimeError("boom")
+        response = client.get("/flight-track", params={"icao24": "abcdef"})
+        assert response.status_code == 500
+        assert "boom" in response.json()["detail"]
+
+    @patch("live_flight.api.fetch_aircraft_track")
+    def test_429_after_10_requests_in_a_minute(self, mock_fetch):
+        mock_fetch.return_value = None
+        for i in range(10):
+            response = client.get("/flight-track", params={"icao24": "abcdef"})
+            assert response.status_code == 200, f"request {i + 1} returned {response.status_code}"
+
+        response = client.get("/flight-track", params={"icao24": "abcdef"})
+        assert response.status_code == 429
 
 
 class TestAircraftPhotoEndpoint:

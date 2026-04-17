@@ -4,14 +4,17 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from live_flight.opensky import (
+    AircraftTrack,
     Airport,
     ClosestFlight,
+    TrackWaypoint,
     _bounding_box,
     _lookup_aircraft_info,
     _lookup_airport,
     _lookup_route,
     _lookup_route_by_callsign,
     _nearest_state,
+    fetch_aircraft_track,
     find_closest_flight,
     haversine_km,
 )
@@ -437,3 +440,67 @@ class TestFindClosestFlight:
         api.get_states.assert_called_once()
         _, kwargs = api.get_states.call_args
         assert kwargs["bbox"] == _bounding_box(10.0, 20.0, 3.0)
+
+
+class TestFetchAircraftTrack:
+    def _waypoint(self, **kwargs) -> SimpleNamespace:
+        defaults = dict(
+            time=1_700_000_000,
+            latitude=10.0,
+            longitude=20.0,
+            baro_altitude=9000.0,
+            true_track=90.0,
+            on_ground=False,
+        )
+        defaults.update(kwargs)
+        return SimpleNamespace(**defaults)
+
+    def test_api_returns_none(self):
+        api = MagicMock()
+        api.get_track_by_aircraft.return_value = None
+        assert fetch_aircraft_track(api, "abc123") is None
+
+    def test_api_raises_returns_none(self):
+        api = MagicMock()
+        api.get_track_by_aircraft.side_effect = RuntimeError("404 no track")
+        assert fetch_aircraft_track(api, "abc123") is None
+
+    def test_builds_track_from_waypoints(self):
+        api = MagicMock()
+        api.get_track_by_aircraft.return_value = SimpleNamespace(
+            path=[
+                self._waypoint(latitude=10.0, longitude=20.0),
+                self._waypoint(latitude=10.5, longitude=20.5, on_ground=True),
+            ],
+            callsign=" TAM3456  ",
+            startTime=1_700_000_000,
+            endTime=1_700_003_600,
+        )
+
+        result = fetch_aircraft_track(api, "abc123")
+
+        assert isinstance(result, AircraftTrack)
+        assert result.icao24 == "abc123"
+        assert result.callsign == "TAM3456"
+        assert result.start_time == 1_700_000_000
+        assert result.end_time == 1_700_003_600
+        assert len(result.path) == 2
+        assert result.path[0] == TrackWaypoint(
+            time=1_700_000_000,
+            latitude=10.0,
+            longitude=20.0,
+            baro_altitude=9000.0,
+            true_track=90.0,
+            on_ground=False,
+        )
+        assert result.path[1].on_ground is True
+
+    def test_empty_path_returns_track_with_no_waypoints(self):
+        api = MagicMock()
+        api.get_track_by_aircraft.return_value = SimpleNamespace(
+            path=[], callsign=None, startTime=None, endTime=None
+        )
+        result = fetch_aircraft_track(api, "abc123")
+        assert result is not None
+        assert result.path == []
+        assert result.callsign is None

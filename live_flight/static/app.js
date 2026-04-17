@@ -8,7 +8,10 @@ const EARTH_RADIUS_M = 6_371_000;
 let map = null;
 let userMarker = null;
 let flightMarker = null;
-let flightPath = null;
+let airportSegment = null;
+let aircraftTrail = null;
+let currentFlight = null;
+let currentTrack = null;
 let deadReckonState = null;
 
 function destinationPoint(lat, lon, distanceM, bearingDeg) {
@@ -42,10 +45,7 @@ function animationFrame(timestamp) {
     deadReckonState.lat = nextLat;
     deadReckonState.lon = nextLon;
     flightMarker.setLatLng([nextLat, nextLon]);
-    if (flightPath) {
-      const [start] = flightPath.getLatLngs();
-      flightPath.setLatLngs([start, [nextLat, nextLon]]);
-    }
+    updateTrailTail(nextLat, nextLon);
   }
   requestAnimationFrame(animationFrame);
 }
@@ -90,37 +90,87 @@ async function onUserMarkerDragEnd(event) {
   scheduleRefreshTimer();
 }
 
-function updateFlightPath(flight) {
-  if (!map) return;
-  const departure = flight && flight.departure;
-  if (
-    !flight ||
-    !departure ||
-    departure.latitude == null ||
-    departure.longitude == null ||
-    flight.latitude == null ||
-    flight.longitude == null
-  ) {
-    if (flightPath) {
-      flightPath.remove();
-      flightPath = null;
+function removeTrail() {
+  if (airportSegment) {
+    airportSegment.remove();
+    airportSegment = null;
+  }
+  if (aircraftTrail) {
+    aircraftTrail.remove();
+    aircraftTrail = null;
+  }
+}
+
+function trackPathPoints(track) {
+  if (!track || !Array.isArray(track.path)) return [];
+  const points = [];
+  for (const wp of track.path) {
+    if (wp.latitude != null && wp.longitude != null) {
+      points.push([wp.latitude, wp.longitude]);
     }
+  }
+  return points;
+}
+
+function updateFlightTrail(flight, track) {
+  if (!map) return;
+  if (!flight || flight.latitude == null || flight.longitude == null) {
+    removeTrail();
     return;
   }
-  const points = [
-    [departure.latitude, departure.longitude],
-    [flight.latitude, flight.longitude],
-  ];
-  if (!flightPath) {
-    flightPath = L.polyline(points, {
-      color: "#38bdf8",
-      weight: 2,
-      opacity: 0.75,
-      dashArray: "6, 8",
-    }).addTo(map);
-  } else {
-    flightPath.setLatLngs(points);
+
+  const departure = flight.departure;
+  const hasDeparture =
+    departure &&
+    departure.latitude != null &&
+    departure.longitude != null;
+
+  const trackPoints = trackPathPoints(track);
+  const trailPoints = trackPoints.slice();
+  trailPoints.push([flight.latitude, flight.longitude]);
+
+  if (trailPoints.length >= 2) {
+    if (!aircraftTrail) {
+      aircraftTrail = L.polyline(trailPoints, {
+        color: "#38bdf8",
+        weight: 2.5,
+        opacity: 0.85,
+      }).addTo(map);
+    } else {
+      aircraftTrail.setLatLngs(trailPoints);
+    }
+  } else if (aircraftTrail) {
+    aircraftTrail.remove();
+    aircraftTrail = null;
   }
+
+  if (hasDeparture) {
+    const connector = trackPoints.length
+      ? trackPoints[0]
+      : [flight.latitude, flight.longitude];
+    const segment = [[departure.latitude, departure.longitude], connector];
+    if (!airportSegment) {
+      airportSegment = L.polyline(segment, {
+        color: "#38bdf8",
+        weight: 2,
+        opacity: 0.55,
+        dashArray: "6, 8",
+      }).addTo(map);
+    } else {
+      airportSegment.setLatLngs(segment);
+    }
+  } else if (airportSegment) {
+    airportSegment.remove();
+    airportSegment = null;
+  }
+}
+
+function updateTrailTail(lat, lon) {
+  if (!aircraftTrail) return;
+  const latlngs = aircraftTrail.getLatLngs();
+  if (latlngs.length === 0) return;
+  latlngs[latlngs.length - 1] = L.latLng(lat, lon);
+  aircraftTrail.setLatLngs(latlngs);
 }
 
 function updateFlightMarker(flight) {
@@ -325,8 +375,10 @@ function renderFlight(flight) {
   if (!flight) {
     card.classList.add("hidden");
     status.textContent = "No aircraft currently within range.";
+    currentFlight = null;
+    currentTrack = null;
     updateFlightMarker(null);
-    updateFlightPath(null);
+    updateFlightTrail(null, null);
     return;
   }
 
@@ -343,7 +395,23 @@ function renderFlight(flight) {
   el("f-distance").textContent = `${flight.distance_km.toFixed(1)} km`;
   loadAircraftPhoto(flight.icao24);
   updateFlightMarker(flight);
-  updateFlightPath(flight);
+  if (currentFlight && currentFlight.icao24 !== flight.icao24) {
+    currentTrack = null;
+  }
+  currentFlight = flight;
+  updateFlightTrail(flight, currentTrack);
+}
+
+async function loadFlightTrack(icao24) {
+  if (!icao24) return null;
+  try {
+    const response = await fetch(`/flight-track?icao24=${icao24}`);
+    if (!response.ok) return null;
+    const body = await response.json();
+    return body.track;
+  } catch {
+    return null;
+  }
 }
 
 function setError(message) {
@@ -404,6 +472,15 @@ async function refresh() {
     const flight = await fetchClosestFlight(coords.lat, coords.lon);
     renderFlight(flight);
     el("last-updated").textContent = `Last updated ${new Date().toLocaleTimeString()}`;
+    if (flight && flight.icao24) {
+      const icao24 = flight.icao24;
+      loadFlightTrack(icao24).then((track) => {
+        if (currentFlight && currentFlight.icao24 === icao24) {
+          currentTrack = track;
+          updateFlightTrail(currentFlight, currentTrack);
+        }
+      });
+    }
   } catch (err) {
     if (err.status === 429) {
       startRateLimitCooldown();

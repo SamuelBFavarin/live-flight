@@ -52,6 +52,25 @@ class ClosestFlight:
     distance_km: float
 
 
+@dataclass
+class TrackWaypoint:
+    time: int | None
+    latitude: float | None
+    longitude: float | None
+    baro_altitude: float | None
+    true_track: float | None
+    on_ground: bool
+
+
+@dataclass
+class AircraftTrack:
+    icao24: str
+    callsign: str | None
+    start_time: int | None
+    end_time: int | None
+    path: list[TrackWaypoint]
+
+
 def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     rlat1, rlat2 = math.radians(lat1), math.radians(lat2)
     dlat = math.radians(lat2 - lat1)
@@ -148,6 +167,34 @@ def _lookup_route(api: OpenSkyApi, icao24: str) -> tuple[str, str]:
         return ("N/A", "N/A")
     last = flights[-1]
     return (last.estDepartureAirport or "N/A", last.estArrivalAirport or "N/A")
+
+
+def fetch_aircraft_track(api: OpenSkyApi, icao24: str) -> AircraftTrack | None:
+    try:
+        track = api.get_track_by_aircraft(icao24)
+    except Exception:
+        return None
+    if track is None:
+        return None
+    raw_path = getattr(track, "path", None) or []
+    path = [
+        TrackWaypoint(
+            time=getattr(wp, "time", None),
+            latitude=getattr(wp, "latitude", None),
+            longitude=getattr(wp, "longitude", None),
+            baro_altitude=getattr(wp, "baro_altitude", None),
+            true_track=getattr(wp, "true_track", None),
+            on_ground=bool(getattr(wp, "on_ground", False)),
+        )
+        for wp in raw_path
+    ]
+    return AircraftTrack(
+        icao24=icao24,
+        callsign=(getattr(track, "callsign", None) or "").strip() or None,
+        start_time=getattr(track, "startTime", None),
+        end_time=getattr(track, "endTime", None),
+        path=path,
+    )
 
 
 def find_closest_flight(api: OpenSkyApi, lat: float, lon: float) -> ClosestFlight | None:

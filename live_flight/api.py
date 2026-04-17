@@ -16,7 +16,7 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
-from live_flight.opensky import find_closest_flight
+from live_flight.opensky import fetch_aircraft_track, find_closest_flight
 from live_flight.photos import fetch_aircraft_photo
 
 CLOSEST_FLIGHT_RATE_LIMIT = "10/minute"
@@ -97,6 +97,24 @@ def get_closest_flight(
         status_code=502,
         detail="OpenSky is temporarily unreachable — please try again in a moment.",
     )
+
+
+@app.get("/flight-track", summary="Recent trajectory of an aircraft by ICAO24 address")
+@limiter.limit(CLOSEST_FLIGHT_RATE_LIMIT)
+def get_flight_track(
+    request: Request,
+    icao24: str = Query(
+        ...,
+        pattern=r"^[a-fA-F0-9]{6}$",
+        description="6-character hex ICAO24 transponder address.",
+    ),
+) -> dict[str, Any]:
+    try:
+        track = fetch_aircraft_track(opensky_client, icao24.lower())
+    except Exception as exc:
+        logger.exception("failed to fetch flight track")
+        raise HTTPException(status_code=500, detail=f"Upstream error: {exc}")
+    return {"track": asdict(track) if track is not None else None}
 
 
 @app.get("/aircraft-photo", summary="Photo of an aircraft by ICAO24 address")
