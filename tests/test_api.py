@@ -3,11 +3,17 @@ from unittest.mock import patch
 import pytest
 from fastapi.testclient import TestClient
 
-from live_flight.api import app
+from live_flight.api import app, limiter
 from live_flight.opensky import Airport, ClosestFlight
 from live_flight.photos import AircraftPhoto
 
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def _reset_limiter():
+    limiter.reset()
+    yield
 
 
 def _sample_flight() -> ClosestFlight:
@@ -121,6 +127,30 @@ class TestClosestFlightEndpoint:
 
         assert response.status_code == 500
         assert "opensky is down" in response.json()["detail"]
+
+
+class TestClosestFlightRateLimit:
+    @patch("live_flight.api.find_closest_flight")
+    def test_429_after_10_requests_in_a_minute(self, mock_find):
+        mock_find.return_value = None
+        for i in range(10):
+            response = client.get("/closest-flight", params={"lat": 0, "lon": 0})
+            assert response.status_code == 200, f"request {i + 1} returned {response.status_code}"
+
+        response = client.get("/closest-flight", params={"lat": 0, "lon": 0})
+        assert response.status_code == 429
+
+    def test_status_endpoint_not_rate_limited(self):
+        for _ in range(15):
+            response = client.get("/status")
+            assert response.status_code == 200
+
+    @patch("live_flight.api.fetch_aircraft_photo")
+    def test_aircraft_photo_endpoint_not_rate_limited(self, mock_fetch):
+        mock_fetch.return_value = None
+        for _ in range(15):
+            response = client.get("/aircraft-photo", params={"icao24": "abcdef"})
+            assert response.status_code == 200
 
 
 class TestAircraftPhotoEndpoint:

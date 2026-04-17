@@ -10,9 +10,14 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from opensky_api import OpenSkyApi
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 
 from live_flight.opensky import find_closest_flight
 from live_flight.photos import fetch_aircraft_photo
+
+CLOSEST_FLIGHT_RATE_LIMIT = "10/minute"
 
 logger = logging.getLogger(__name__)
 STATIC_DIR = Path(__file__).parent / "static"
@@ -31,11 +36,15 @@ def _build_opensky_client() -> OpenSkyApi:
 
 load_dotenv()
 
+limiter = Limiter(key_func=get_remote_address, strategy="moving-window")
+
 app = FastAPI(
     title="Live Flight API",
     version="0.1.0",
     description="HTTP API that returns the closest live flight to a given location.",
 )
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 opensky_client = _build_opensky_client()
 
@@ -58,7 +67,9 @@ def get_status() -> dict[str, str]:
 
 
 @app.get("/closest-flight", summary="Closest live flight to a location")
+@limiter.limit(CLOSEST_FLIGHT_RATE_LIMIT)
 def get_closest_flight(
+    request: Request,
     lat: float = Query(..., ge=-90, le=90, description="Latitude in decimal degrees."),
     lon: float = Query(..., ge=-180, le=180, description="Longitude in decimal degrees."),
 ) -> dict[str, Any]:

@@ -49,6 +49,23 @@
       </section>
     </main>
 
+    <div
+      id="rate-limit-modal"
+      class="modal hidden"
+      role="alertdialog"
+      aria-labelledby="rate-limit-title"
+    >
+      <div class="modal-content">
+        <h2 id="rate-limit-title">Too many requests</h2>
+        <p>You've reached the limit of 10 requests per minute.</p>
+        <p>
+          Please wait
+          <strong><span id="rate-limit-countdown">60</span> seconds</strong>
+          before we try again.
+        </p>
+      </div>
+    </div>
+
     <script
       src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
       integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="

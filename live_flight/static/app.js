@@ -82,6 +82,7 @@ async function onUserMarkerDragEnd(event) {
     `Custom location: (${coords.lat.toFixed(4)}, ${coords.lon.toFixed(4)})`;
   el("flight-status").textContent = "Fetching closest flight for the new location…";
   await refresh();
+  scheduleRefreshTimer();
 }
 
 function updateFlightMarker(flight) {
@@ -140,19 +141,49 @@ function detectBrowserLocation() {
   });
 }
 
+const IP_LOOKUP_PROVIDERS = [
+  {
+    name: "ipapi.co",
+    url: "https://ipapi.co/json/",
+    extract: (data) => ({
+      lat: Number(data.latitude),
+      lon: Number(data.longitude),
+      city: data.city || "",
+      country: data.country_name || "",
+    }),
+  },
+  {
+    name: "ipwho.is",
+    url: "https://ipwho.is/",
+    extract: (data) => ({
+      lat: Number(data.latitude),
+      lon: Number(data.longitude),
+      city: data.city || "",
+      country: data.country || "",
+    }),
+  },
+];
+
 async function detectIpLocation() {
-  const response = await fetch("https://ipapi.co/json/");
-  if (!response.ok) throw new Error(`IP geolocation failed (${response.status})`);
-  const data = await response.json();
-  if (data.latitude == null || data.longitude == null) {
-    throw new Error("IP geolocation did not return coordinates");
+  const errors = [];
+  for (const provider of IP_LOOKUP_PROVIDERS) {
+    try {
+      const response = await fetch(provider.url);
+      if (!response.ok) {
+        errors.push(`${provider.name} ${response.status}`);
+        continue;
+      }
+      const data = await response.json();
+      const extracted = provider.extract(data);
+      if (Number.isFinite(extracted.lat) && Number.isFinite(extracted.lon)) {
+        return extracted;
+      }
+      errors.push(`${provider.name} no coords`);
+    } catch (err) {
+      errors.push(`${provider.name} ${err.message}`);
+    }
   }
-  return {
-    lat: Number(data.latitude),
-    lon: Number(data.longitude),
-    city: data.city || "",
-    country: data.country_name || "",
-  };
+  throw new Error(`all IP lookups failed (${errors.join("; ")})`);
 }
 
 async function detectLocation() {
@@ -166,7 +197,11 @@ async function detectLocation() {
 
 async function fetchClosestFlight(lat, lon) {
   const response = await fetch(`/closest-flight?lat=${lat}&lon=${lon}`);
-  if (!response.ok) throw new Error(`API returned ${response.status}`);
+  if (!response.ok) {
+    const error = new Error(`API returned ${response.status}`);
+    error.status = response.status;
+    throw error;
+  }
   const body = await response.json();
   return body.flight;
 }
@@ -269,14 +304,64 @@ function setError(message) {
   el("flight-status").textContent = `Error: ${message}`;
 }
 
+const RATE_LIMIT_COOLDOWN_MS = 60_000;
+
 let coords = null;
+let refreshTimer = null;
+let cooldownTimer = null;
+
+function clearRefreshTimer() {
+  if (refreshTimer !== null) {
+    clearInterval(refreshTimer);
+    refreshTimer = null;
+  }
+}
+
+function scheduleRefreshTimer() {
+  clearRefreshTimer();
+  refreshTimer = setInterval(refresh, REFRESH_MS);
+}
+
+function startRateLimitCooldown() {
+  clearRefreshTimer();
+  if (cooldownTimer !== null) {
+    clearInterval(cooldownTimer);
+  }
+
+  const modal = el("rate-limit-modal");
+  const countdown = el("rate-limit-countdown");
+  const startedAt = Date.now();
+
+  modal.classList.remove("hidden");
+  countdown.textContent = "60";
+
+  cooldownTimer = setInterval(() => {
+    const remaining = Math.max(
+      0,
+      Math.ceil((RATE_LIMIT_COOLDOWN_MS - (Date.now() - startedAt)) / 1000),
+    );
+    countdown.textContent = String(remaining);
+    if (remaining <= 0) {
+      clearInterval(cooldownTimer);
+      cooldownTimer = null;
+      modal.classList.add("hidden");
+      refresh();
+      scheduleRefreshTimer();
+    }
+  }, 250);
+}
 
 async function refresh() {
+  if (cooldownTimer !== null) return;
   try {
     const flight = await fetchClosestFlight(coords.lat, coords.lon);
     renderFlight(flight);
     el("last-updated").textContent = `Last updated ${new Date().toLocaleTimeString()}`;
   } catch (err) {
+    if (err.status === 429) {
+      startRateLimitCooldown();
+      return;
+    }
     setError(err.message);
   }
 }
@@ -295,7 +380,7 @@ async function main() {
   initMap(coords);
 
   await refresh();
-  setInterval(refresh, REFRESH_MS);
+  scheduleRefreshTimer();
 }
 
 main();

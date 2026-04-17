@@ -13,6 +13,7 @@ python-dotenv = "^1.0.1"
 requests = "^2.32.3"
 fastapi = "^0.115"
 uvicorn = { extras = ["standard"], version = "^0.32" }
+slowapi = "^0.1.9"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0"
