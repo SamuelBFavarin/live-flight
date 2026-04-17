@@ -136,6 +136,30 @@ class TestClosestFlightEndpoint:
         assert response.status_code == 500
         assert "opensky is down" in response.json()["detail"]
 
+    @patch("live_flight.api.find_closest_flight")
+    def test_502_on_repeated_network_timeout(self, mock_find):
+        from requests.exceptions import ConnectTimeout
+
+        mock_find.side_effect = ConnectTimeout("timed out")
+
+        response = client.get("/closest-flight", params={"lat": 0, "lon": 0})
+
+        assert response.status_code == 502
+        assert "temporarily unreachable" in response.json()["detail"]
+        assert mock_find.call_count == 2
+
+    @patch("live_flight.api.find_closest_flight")
+    def test_network_error_recovers_on_retry(self, mock_find):
+        from requests.exceptions import ConnectTimeout
+
+        mock_find.side_effect = [ConnectTimeout("timed out"), None]
+
+        response = client.get("/closest-flight", params={"lat": 0, "lon": 0})
+
+        assert response.status_code == 200
+        assert response.json() == {"flight": None}
+        assert mock_find.call_count == 2
+
 
 class TestClosestFlightRateLimit:
     @patch("live_flight.api.find_closest_flight")

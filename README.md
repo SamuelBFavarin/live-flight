@@ -96,7 +96,8 @@ Status codes:
 | `200` | Success. If no aircraft is currently within the search area, the body is `{"flight": null}`. |
 | `400` | `lat` or `lon` is missing, not numeric, or out of range (`lat ∉ [-90, 90]` or `lon ∉ [-180, 180]`). |
 | `429` | The caller's IP has exceeded the rate limit (**10 requests / minute**). Used to protect the service from abuse and to keep the OpenSky token under its quota. |
-| `500` | Upstream error (OpenSky unreachable, unhandled exception, …). |
+| `500` | Unhandled upstream error (unexpected exception in enrichment, etc.). |
+| `502` | OpenSky API was unreachable on two consecutive attempts (connection/read timeout). The client should retry later. |
 
 ### `GET /aircraft-photo?icao24=<hex>`
 

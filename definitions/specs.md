@@ -18,7 +18,8 @@ Goal: Expose an HTTP API that, given a caller-supplied location (latitude / long
   - `200` — success. When no aircraft is within the search area, return `{"flight": null}` (still 200).
   - `400` — `lat` or `lon` is missing, not numeric, or out of range (`lat ∉ [-90, 90]` or `lon ∉ [-180, 180]`).
   - `429` — the caller's IP has exceeded the per-IP rate limit (see below).
-  - `500` — upstream error (OpenSky unreachable, unhandled exception in enrichment, …).
+  - `500` — unhandled upstream error (unexpected exception in enrichment, …).
+  - `502` — OpenSky API was unreachable on two consecutive attempts (connection or read timeout). The endpoint must to retry at least once before surfacing this status.
 - `GET /aircraft-photo?icao24=<hex>` — returns a photo of the aircraft with the given ICAO24 address, sourced from a public aircraft photo registry (e.g. `planespotters.net`). The response must to include a thumbnail URL, the photographer's name and a link back to the photo page so callers can comply with the registry's attribution requirements.
   - `200` — success. When the registry has no photo for this aircraft, return `{"photo": null}` (still 200).
   - `400` — `icao24` is missing or is not a valid 6-character hex string.

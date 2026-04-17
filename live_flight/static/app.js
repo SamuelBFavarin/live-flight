@@ -236,7 +236,14 @@ async function detectLocation() {
 async function fetchClosestFlight(lat, lon) {
   const response = await fetch(`/closest-flight?lat=${lat}&lon=${lon}`);
   if (!response.ok) {
-    const error = new Error(`API returned ${response.status}`);
+    let detail = `API returned ${response.status}`;
+    try {
+      const body = await response.json();
+      if (body && body.detail) detail = body.detail;
+    } catch {
+      // non-JSON response; stick with the default detail
+    }
+    const error = new Error(detail);
     error.status = response.status;
     throw error;
   }

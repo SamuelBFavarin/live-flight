@@ -10,6 +10,8 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from opensky_api import OpenSkyApi
+from requests.exceptions import ConnectionError as RequestsConnectionError
+from requests.exceptions import ConnectTimeout, ReadTimeout
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
@@ -18,6 +20,8 @@ from live_flight.opensky import find_closest_flight
 from live_flight.photos import fetch_aircraft_photo
 
 CLOSEST_FLIGHT_RATE_LIMIT = "10/minute"
+OPENSKY_RETRY_ATTEMPTS = 2
+UPSTREAM_NETWORK_ERRORS = (ConnectTimeout, ReadTimeout, RequestsConnectionError)
 
 logger = logging.getLogger(__name__)
 STATIC_DIR = Path(__file__).parent / "static"
@@ -73,12 +77,26 @@ def get_closest_flight(
     lat: float = Query(..., ge=-90, le=90, description="Latitude in decimal degrees."),
     lon: float = Query(..., ge=-180, le=180, description="Longitude in decimal degrees."),
 ) -> dict[str, Any]:
-    try:
-        flight = find_closest_flight(opensky_client, lat, lon)
-    except Exception as exc:
-        logger.exception("failed to fetch closest flight")
-        raise HTTPException(status_code=500, detail=f"Upstream error: {exc}")
-    return {"flight": asdict(flight) if flight is not None else None}
+    for attempt in range(OPENSKY_RETRY_ATTEMPTS):
+        try:
+            flight = find_closest_flight(opensky_client, lat, lon)
+            return {"flight": asdict(flight) if flight is not None else None}
+        except UPSTREAM_NETWORK_ERRORS as exc:
+            logger.warning(
+                "OpenSky network issue (attempt %d/%d): %s",
+                attempt + 1,
+                OPENSKY_RETRY_ATTEMPTS,
+                exc,
+            )
+            continue
+        except Exception as exc:
+            logger.exception("failed to fetch closest flight")
+            raise HTTPException(status_code=500, detail=f"Upstream error: {exc}")
+
+    raise HTTPException(
+        status_code=502,
+        detail="OpenSky is temporarily unreachable — please try again in a moment.",
+    )
 
 
 @app.get("/aircraft-photo", summary="Photo of an aircraft by ICAO24 address")
