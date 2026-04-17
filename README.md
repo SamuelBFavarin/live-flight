@@ -146,6 +146,18 @@ No build step, bundler, or framework is required — FastAPI mounts the files at
 
 > Note: `navigator.geolocation` is only available on secure origins (HTTPS) in production. On `localhost` it works over HTTP for dev.
 
+## Deploying to Railway
+
+1. Push the repo to GitHub (already done if you're reading this on the GitHub mirror).
+2. In Railway, **New Project → Deploy from GitHub repo** → pick `live-flight`.
+3. Under **Variables**, set:
+   - `OPENSKY_CLIENT_ID`
+   - `OPENSKY_CLIENT_SECRET`
+   (Railway injects `PORT` automatically.)
+4. Deploy. Railpack detects Poetry, installs dependencies, and uses the [`Procfile`](Procfile) (`uvicorn live_flight.api:app --host 0.0.0.0 --port $PORT`) as the start command.
+
+No `Dockerfile` is needed — Railpack handles the Python runtime via Poetry.
+
 ## Running the tests
 
 ```bash
