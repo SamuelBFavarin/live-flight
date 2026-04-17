@@ -9,3 +9,4 @@ build/
 .poetry/
 .DS_Store
 .coverage
+CLAUDE.md
